@@ -20,7 +20,7 @@ import {
 import axios from 'axios';
 
 // --- API Configuration ---
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'https://classtrack-six.vercel.app/api';
 
 // --- Shared Components ---
 const LoadingSpinner = () => (
