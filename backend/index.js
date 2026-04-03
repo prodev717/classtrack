@@ -1,8 +1,11 @@
 import e from "express";
+import cors from "cors";
 import { query } from "./db.js";
 
 const app = e();
+app.use(cors());
 app.use(e.json());
+
 
 app.get("/", (req, res) => {
     res.send("Backend server is running");
@@ -12,6 +15,16 @@ app.get("/", (req, res) => {
 app.get("/api/classrooms", async (req, res) => {
     try {
         const { rows } = await query("SELECT * FROM classrooms");
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get all students
+app.get("/api/students", async (req, res) => {
+    try {
+        const { rows } = await query("SELECT * FROM students ORDER BY name");
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
