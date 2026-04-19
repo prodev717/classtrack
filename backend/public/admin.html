@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classtrack Admin Panel</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans p-6 min-h-screen">
+
+    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Add/Edit User Form -->
+        <div class="bg-white p-6 rounded-lg shadow-md md:col-span-1 h-fit">
+            <h2 id="formTitle" class="text-xl font-bold mb-4 text-indigo-600">Create New User</h2>
+            <form id="userForm" class="space-y-4">
+                <input type="hidden" id="userId">
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Role</label>
+                    <select id="role" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                        <option value="STUDENT">Student</option>
+                        <option value="FACULTY">Faculty</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Full Name</label>
+                    <input type="text" id="name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                    <input type="email" id="email" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">RFID Tag</label>
+                    <input type="text" id="rfid" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password <span id="passwordHint" class="text-xs text-gray-400 hidden">(leave blank to keep current)</span></label>
+                    <input type="password" id="password" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Department</label>
+                    <input type="text" id="department" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+
+                <div id="studentFields">
+                    <label class="block text-sm font-medium text-gray-700">Registration Number</label>
+                    <input type="text" id="regNumber" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div id="facultyFields" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700">Employee ID</label>
+                    <input type="text" id="employeeId" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit" id="submitBtn" class="flex-1 bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 font-semibold shadow-sm transition">Add User</button>
+                    <button type="button" id="cancelBtn" class="hidden flex-1 bg-gray-200 text-gray-700 p-2 rounded-md hover:bg-gray-300 font-semibold shadow-sm transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Users List -->
+        <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
+            <h2 class="text-xl font-bold mb-4 text-indigo-600">Registered Users</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RFID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dept/Identifier</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersList" class="bg-white divide-y divide-gray-200">
+                        <!-- Users will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="loadingMessage" class="text-center text-gray-500 mt-4">Loading users...</div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_URL = '/api/admin/users';
+        let allUsers = [];
+
+        // Toggle form fields based on role selection
+        document.getElementById('role').addEventListener('change', function(e) {
+            updateRoleFields(e.target.value);
+        });
+
+        function updateRoleFields(role) {
+            if (role === 'STUDENT') {
+                document.getElementById('studentFields').classList.remove('hidden');
+                document.getElementById('facultyFields').classList.add('hidden');
+            } else {
+                document.getElementById('studentFields').classList.add('hidden');
+                document.getElementById('facultyFields').classList.remove('hidden');
+            }
+        }
+
+        // Initialize fetching
+        async function fetchUsers() {
+            try {
+                const res = await fetch(API_URL);
+                const json = await res.json();
+                allUsers = json.data || [];
+                
+                const usersList = document.getElementById('usersList');
+                document.getElementById('loadingMessage').classList.add('hidden');
+                usersList.innerHTML = '';
+
+                if (allUsers.length > 0) {
+                    allUsers.forEach(user => {
+                        let identifier = '-';
+                        let department = '-';
+                        
+                        if (user.role === 'STUDENT' && user.student) {
+                            identifier = `Reg: ${user.student.regNumber}`;
+                            department = user.student.department;
+                        } else if (user.role === 'FACULTY' && user.faculty) {
+                            identifier = `Emp: ${user.faculty.employeeId}`;
+                            department = user.faculty.department;
+                        }
+
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">${user.name || 'N/A'}</div>
+                                <div class="text-sm text-gray-500">${user.email}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${user.rfid || '-'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    user.role === 'STUDENT' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                                }">
+                                    ${user.role}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div>${department}</div>
+                                <div class="text-xs text-gray-400 font-mono">${identifier}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button onclick="editUser(${user.id})" class="text-indigo-600 hover:text-indigo-900">Edit</button>
+                            </td>
+                        `;
+                        usersList.appendChild(tr);
+                    });
+                } else {
+                    usersList.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No users found.</td></tr>';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loadingMessage').innerText = 'Failed to load users.';
+            }
+        }
+
+        function editUser(id) {
+            const user = allUsers.find(u => u.id === id);
+            if (!user) return;
+
+            document.getElementById('formTitle').innerText = 'Edit User';
+            document.getElementById('userId').value = user.id;
+            document.getElementById('role').value = user.role;
+            document.getElementById('name').value = user.name || '';
+            document.getElementById('email').value = user.email;
+            document.getElementById('rfid').value = user.rfid || '';
+            document.getElementById('password').placeholder = 'Keep blank to stay same';
+            document.getElementById('passwordHint').classList.remove('hidden');
+            
+            let department = '';
+            if (user.role === 'STUDENT' && user.student) {
+                department = user.student.department;
+                document.getElementById('regNumber').value = user.student.regNumber;
+            } else if (user.role === 'FACULTY' && user.faculty) {
+                department = user.faculty.department;
+                document.getElementById('employeeId').value = user.faculty.employeeId;
+            }
+            document.getElementById('department').value = department;
+
+            updateRoleFields(user.role);
+            
+            document.getElementById('submitBtn').innerText = 'Update User';
+            document.getElementById('cancelBtn').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        document.getElementById('cancelBtn').addEventListener('click', resetForm);
+
+        function resetForm() {
+            document.getElementById('formTitle').innerText = 'Create New User';
+            document.getElementById('userId').value = '';
+            document.getElementById('userForm').reset();
+            document.getElementById('passwordHint').classList.add('hidden');
+            document.getElementById('password').placeholder = '';
+            document.getElementById('submitBtn').innerText = 'Add User';
+            document.getElementById('cancelBtn').classList.add('hidden');
+            updateRoleFields('STUDENT');
+        }
+
+        // Handle form submission
+        document.getElementById('userForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const userId = document.getElementById('userId').value;
+            const role = document.getElementById('role').value;
+            const payload = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                rfid: document.getElementById('rfid').value,
+                department: document.getElementById('department').value,
+                role: role
+            };
+
+            const pwd = document.getElementById('password').value;
+            if (pwd) payload.password = pwd;
+
+            if (role === 'STUDENT') {
+                payload.regNumber = document.getElementById('regNumber').value;
+                if (!payload.regNumber) return alert('Registration Number is required for students.');
+            } else {
+                payload.employeeId = document.getElementById('employeeId').value;
+                if (!payload.employeeId) return alert('Employee ID is required for faculty.');
+            }
+
+            try {
+                const method = userId ? 'PUT' : 'POST';
+                const url = userId ? `${API_URL}/${userId}` : API_URL;
+
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert(userId ? 'User updated successfully!' : 'User created successfully!');
+                    resetForm();
+                    fetchUsers();
+                } else {
+                    const errorData = await res.json();
+                    alert('Error: ' + (errorData.error || 'Failed to process request'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Connection error');
+            }
+        });
+
+        // Load initially
+        fetchUsers();
+    </script>
+</body>
+</html>

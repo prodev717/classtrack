@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  FACULTY
+  STUDENT
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String?
+  email     String   @unique
+  rfid      String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+
+  student   StudentProfile?
+  faculty   FacultyProfile?
+}
+
+model StudentProfile {
+  userId     Int    @id
+  regNumber  String @unique
+  department String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FacultyProfile {
+  userId     Int    @id
+  employeeId String @unique
+  department String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
