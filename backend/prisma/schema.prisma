@@ -9,6 +9,7 @@ datasource db {
 enum Role {
   FACULTY
   STUDENT
+  ADMIN
 }
 
 model User {
@@ -22,6 +23,7 @@ model User {
 
   student StudentProfile?
   faculty FacultyProfile?
+  admin   AdminProfile?
 }
 
 model StudentProfile {
@@ -36,6 +38,12 @@ model FacultyProfile {
   userId     Int    @id
   employeeId String @unique
   department String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AdminProfile {
+  userId Int @id
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -9,7 +9,7 @@ export const authenticate = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
         const user = await prisma.user.findUnique({
             where: { id: decoded.id }, // Token payload has 'id' from auth.js
-            include: { student: true, faculty: true }
+            include: { student: true, faculty: true, admin: true }
         });
 
         if (!user) return res.status(401).json({ error: 'User not found' });
@@ -31,6 +31,13 @@ export const authorizeFaculty = (req, res, next) => {
 export const authorizeStudent = (req, res, next) => {
     if (req.user.role !== 'STUDENT') {
         return res.status(403).json({ error: 'Access denied: Student only' });
+    }
+    next();
+};
+
+export const authorizeAdmin = (req, res, next) => {
+    if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Access denied: Admin only' });
     }
     next();
 };

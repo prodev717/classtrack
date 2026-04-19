@@ -1,8 +1,12 @@
 import prisma from '../db.js';
 import express from 'express';
 import bcrypt from 'bcrypt';
+import { authenticate, authorizeAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
+
+router.use(authenticate);
+router.use(authorizeAdmin);
 
 router.post('/users', async (req, res) => {
     try {
@@ -41,11 +45,17 @@ router.post('/users', async (req, res) => {
                             department
                         }
                     }
+                }),
+                ...(role === 'ADMIN' && {
+                    admin: {
+                        create: {}
+                    }
                 })
             },
             include: {
                 student: true,
-                faculty: true
+                faculty: true,
+                admin: true
             }
         });
 
@@ -61,7 +71,8 @@ router.get('/users', async (req, res) => {
         const users = await prisma.user.findMany({
             include: {
                 student: true,
-                faculty: true
+                faculty: true,
+                admin: true
             }
         });
 
@@ -117,11 +128,20 @@ router.put('/users/:id', async (req, res) => {
                             update: { employeeId, department }
                         }
                     }
+                }),
+                ...(role === 'ADMIN' && {
+                    admin: {
+                        upsert: {
+                            create: {},
+                            update: {}
+                        }
+                    }
                 })
             },
             include: {
                 student: true,
-                faculty: true
+                faculty: true,
+                admin: true
             }
         });
 

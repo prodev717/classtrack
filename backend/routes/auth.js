@@ -12,7 +12,7 @@ router.post('/login', async (req, res) => {
 
         const user = await prisma.user.findUnique({
             where: { email },
-            include: { student: true, faculty: true }
+            include: { student: true, faculty: true, admin: true }
         });
 
         if (!user) {
