@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
+import facultyRoutes from './routes/faculty.js';
+import studentRoutes from './routes/student.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -27,6 +29,8 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/faculty', facultyRoutes);
+app.use('/api/student', studentRoutes);
 
 const PORT = process.env.PORT || 5000;
 

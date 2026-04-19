@@ -2,6 +2,7 @@ import prisma from '../db.js';
 import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ router.post('/login', async (req, res) => {
 
         const token = jwt.sign(
             { id: user.id, role: user.role },
-            process.env.JWT_SECRET,
+            process.env.JWT_SECRET || 'secret',
             { expiresIn: '1d' }
         );
 
@@ -38,6 +39,10 @@ router.post('/login', async (req, res) => {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+router.get('/me', authenticate, (req, res) => {
+    res.json({ data: req.user });
 });
 
 export default router;
