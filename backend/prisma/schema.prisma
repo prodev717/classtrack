@@ -20,8 +20,8 @@ model User {
   role      Role
   createdAt DateTime @default(now())
 
-  student   StudentProfile?
-  faculty   FacultyProfile?
+  student StudentProfile?
+  faculty FacultyProfile?
 }
 
 model StudentProfile {
@@ -38,4 +38,53 @@ model FacultyProfile {
   department String
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Slot {
+  id        Int       @id @default(autoincrement())
+  slotName  String    @unique
+  dayOfWeek DayOfWeek
+  startTime DateTime
+  endTime   DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([dayOfWeek, startTime, endTime])
+}
+
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+model Venue {
+  id          Int          @id @default(autoincrement())
+  room        String
+  block       String
+  createdAt   DateTime     @default(now())
+  rfidReaders RFIDReader[]
+
+  @@unique([room, block]) // prevents duplicate rooms in same block
+}
+
+enum DeviceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model RFIDReader {
+  id               Int          @id @default(autoincrement())
+  roomId           Int
+  deviceIdentifier String       @unique
+  status           DeviceStatus @default(ACTIVE)
+  createdAt        DateTime     @default(now())
+
+  venue Venue @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
 }

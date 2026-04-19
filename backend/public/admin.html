@@ -92,6 +92,162 @@
 
     </div>
 
+    <!-- Slot Management Section -->
+    <div class="max-w-6xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Slot Form -->
+        <div class="bg-white p-6 rounded-lg shadow-md md:col-span-1 h-fit">
+            <h2 id="slotFormTitle" class="text-xl font-bold mb-4 text-indigo-600">Define New Slot</h2>
+            <form id="slotForm" class="space-y-4">
+                <input type="hidden" id="slotId">
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Slot Name (e.g. S1, S2)</label>
+                    <input type="text" id="slotName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Day of Week</label>
+                    <select id="dayOfWeek" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                        <option value="MON">Monday</option>
+                        <option value="TUE">Tuesday</option>
+                        <option value="WED">Wednesday</option>
+                        <option value="THU">Thursday</option>
+                        <option value="FRI">Friday</option>
+                        <option value="SAT">Saturday</option>
+                        <option value="SUN">Sunday</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Start Time</label>
+                        <input type="time" id="startTime" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">End Time</label>
+                        <input type="time" id="endTime" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit" id="slotSubmitBtn" class="flex-1 bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 font-semibold shadow-sm transition">Create Slot</button>
+                    <button type="button" id="slotCancelBtn" class="hidden flex-1 bg-gray-200 text-gray-700 p-2 rounded-md hover:bg-gray-300 font-semibold shadow-sm transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Slots List -->
+        <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
+            <h2 class="text-xl font-bold mb-4 text-indigo-600">Defined Slots</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slot</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="slotsList" class="bg-white divide-y divide-gray-200">
+                        <!-- Slots will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Venue Management Section -->
+    <div class="max-w-6xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Venue Form -->
+        <div class="bg-white p-6 rounded-lg shadow-md md:col-span-1 h-fit">
+            <h2 id="venueFormTitle" class="text-xl font-bold mb-4 text-indigo-600">Add New Venue</h2>
+            <form id="venueForm" class="space-y-4">
+                <input type="hidden" id="venueId">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Room Number</label>
+                    <input type="text" id="room" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Block / Building</label>
+                    <input type="text" id="block" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit" id="venueSubmitBtn" class="flex-1 bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 font-semibold shadow-sm transition">Add Venue</button>
+                    <button type="button" id="venueCancelBtn" class="hidden flex-1 bg-gray-200 text-gray-700 p-2 rounded-md hover:bg-gray-300 font-semibold shadow-sm transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+        <!-- Venue List -->
+        <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
+            <h2 class="text-xl font-bold mb-4 text-indigo-600">Venues</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Block</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="venuesList" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reader Management Section -->
+    <div class="max-w-6xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Reader Form -->
+        <div class="bg-white p-6 rounded-lg shadow-md md:col-span-1 h-fit">
+            <h2 id="readerFormTitle" class="text-xl font-bold mb-4 text-indigo-600">Register Reader</h2>
+            <form id="readerForm" class="space-y-4">
+                <input type="hidden" id="readerId">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Linked Venue (Room)</label>
+                    <select id="readerVenueId" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                        <option value="">Select a room...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Device ID (MAC/Serial)</label>
+                    <input type="text" id="deviceIdentifier" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Status</label>
+                    <select id="readerStatus" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="ACTIVE">Active</option>
+                        <option value="INACTIVE">Inactive</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit" id="readerSubmitBtn" class="flex-1 bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 font-semibold shadow-sm transition">Register</button>
+                    <button type="button" id="readerCancelBtn" class="hidden flex-1 bg-gray-200 text-gray-700 p-2 rounded-md hover:bg-gray-300 font-semibold shadow-sm transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+        <!-- Reader List -->
+        <div class="bg-white p-6 rounded-lg shadow-md md:col-span-2">
+            <h2 class="text-xl font-bold mb-4 text-indigo-600">RFID Readers</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="readersList" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = '/api/admin/users';
         let allUsers = [];
@@ -154,7 +310,8 @@
                                 <div class="text-xs text-gray-400 font-mono">${identifier}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button onclick="editUser(${user.id})" class="text-indigo-600 hover:text-indigo-900">Edit</button>
+                                <button onclick="editUser(${user.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                <button onclick="deleteUser(${user.id})" class="text-red-600 hover:text-red-900">Delete</button>
                             </td>
                         `;
                         usersList.appendChild(tr);
@@ -165,6 +322,23 @@
             } catch (err) {
                 console.error(err);
                 document.getElementById('loadingMessage').innerText = 'Failed to load users.';
+            }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
+            try {
+                const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    alert('User deleted successfully');
+                    fetchUsers();
+                } else {
+                    const data = await res.json();
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Connection error');
             }
         }
 
@@ -260,8 +434,277 @@
             }
         });
 
+        // --- SLOT MANAGEMENT LOGIC ---
+
+        const SLOT_API_URL = '/api/admin/slots';
+        let allSlots = [];
+
+        async function fetchSlots() {
+            try {
+                const res = await fetch(SLOT_API_URL);
+                const json = await res.json();
+                allSlots = json.data || [];
+                
+                const slotsList = document.getElementById('slotsList');
+                slotsList.innerHTML = '';
+
+                if (allSlots.length > 0) {
+                    allSlots.forEach(slot => {
+                        const start = new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const end = new Date(slot.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${slot.slotName}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${slot.dayOfWeek}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${start} - ${end}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button onclick="editSlot(${slot.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                <button onclick="deleteSlot(${slot.id})" class="text-red-600 hover:text-red-900">Delete</button>
+                            </td>
+                        `;
+                        slotsList.appendChild(tr);
+                    });
+                } else {
+                    slotsList.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">No slots defined.</td></tr>';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function editSlot(id) {
+            const slot = allSlots.find(s => s.id === id);
+            if (!slot) return;
+
+            document.getElementById('slotFormTitle').innerText = 'Edit Slot';
+            document.getElementById('slotId').value = slot.id;
+            document.getElementById('slotName').value = slot.slotName;
+            document.getElementById('dayOfWeek').value = slot.dayOfWeek;
+            
+            // Format time for input
+            const start = new Date(slot.startTime).toISOString().substr(11, 5);
+            const end = new Date(slot.endTime).toISOString().substr(11, 5);
+            
+            document.getElementById('startTime').value = start;
+            document.getElementById('endTime').value = end;
+            
+            document.getElementById('slotSubmitBtn').innerText = 'Update Slot';
+            document.getElementById('slotCancelBtn').classList.remove('hidden');
+        }
+
+        document.getElementById('slotCancelBtn').addEventListener('click', resetSlotForm);
+
+        function resetSlotForm() {
+            document.getElementById('slotFormTitle').innerText = 'Define New Slot';
+            document.getElementById('slotId').value = '';
+            document.getElementById('slotForm').reset();
+            document.getElementById('slotSubmitBtn').innerText = 'Create Slot';
+            document.getElementById('slotCancelBtn').classList.add('hidden');
+        }
+
+        document.getElementById('slotForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const slotId = document.getElementById('slotId').value;
+            
+            // Convert time strings to full date objects for Prisma
+            const today = new Date().toISOString().split('T')[0];
+            const start = `${today}T${document.getElementById('startTime').value}:00Z`;
+            const end = `${today}T${document.getElementById('endTime').value}:00Z`;
+
+            const payload = {
+                slotName: document.getElementById('slotName').value,
+                dayOfWeek: document.getElementById('dayOfWeek').value,
+                startTime: start,
+                endTime: end
+            };
+
+            try {
+                const method = slotId ? 'PUT' : 'POST';
+                const url = slotId ? `${SLOT_API_URL}/${slotId}` : SLOT_API_URL;
+
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    alert(slotId ? 'Slot updated!' : 'Slot created!');
+                    resetSlotForm();
+                    fetchSlots();
+                } else {
+                    alert('Error processing slot');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        async function deleteSlot(id) {
+            if (!confirm('Are you sure you want to delete this slot?')) return;
+            try {
+                const res = await fetch(`${SLOT_API_URL}/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    alert('Slot deleted successfully');
+                    fetchSlots();
+                } else {
+                    alert('Error deleting slot');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // --- VENUE MANAGEMENT LOGIC ---
+        const VENUE_API_URL = '/api/admin/venues';
+        let allVenues = [];
+
+        async function fetchVenues() {
+            try {
+                const res = await fetch(VENUE_API_URL);
+                const json = await res.json();
+                allVenues = json.data || [];
+                
+                const venuesList = document.getElementById('venuesList');
+                venuesList.innerHTML = '';
+
+                // Populate reader selection dropdown
+                const readerVenueSelect = document.getElementById('readerVenueId');
+                readerVenueSelect.innerHTML = '<option value="">Select a room...</option>';
+
+                allVenues.forEach(venue => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${venue.room}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${venue.block}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="editVenue(${venue.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                            <button onclick="deleteVenue(${venue.id})" class="text-red-600 hover:text-red-900">Delete</button>
+                        </td>
+                    `;
+                    venuesList.appendChild(tr);
+
+                    const opt = document.createElement('option');
+                    opt.value = venue.id;
+                    opt.innerText = `${venue.room} (${venue.block})`;
+                    readerVenueSelect.appendChild(opt);
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        document.getElementById('venueForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const venueId = document.getElementById('venueId').value;
+            const payload = { room: document.getElementById('room').value, block: document.getElementById('block').value };
+            const method = venueId ? 'PUT' : 'POST';
+            const url = venueId ? `${VENUE_API_URL}/${venueId}` : VENUE_API_URL;
+            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (res.ok) { resetVenueForm(); fetchVenues(); }
+        });
+
+        function editVenue(id) {
+            const v = allVenues.find(v => v.id === id);
+            if (!v) return;
+            document.getElementById('venueFormTitle').innerText = 'Edit Venue';
+            document.getElementById('venueId').value = v.id;
+            document.getElementById('room').value = v.room;
+            document.getElementById('block').value = v.block;
+            document.getElementById('venueSubmitBtn').innerText = 'Update';
+            document.getElementById('venueCancelBtn').classList.remove('hidden');
+        }
+
+        document.getElementById('venueCancelBtn').addEventListener('click', resetVenueForm);
+        function resetVenueForm() {
+            document.getElementById('venueFormTitle').innerText = 'Add New Venue';
+            document.getElementById('venueId').value = '';
+            document.getElementById('venueForm').reset();
+            document.getElementById('venueSubmitBtn').innerText = 'Add Venue';
+            document.getElementById('venueCancelBtn').classList.add('hidden');
+        }
+
+        async function deleteVenue(id) {
+            if (confirm('Delete venue?')) {
+                await fetch(`${VENUE_API_URL}/${id}`, { method: 'DELETE' });
+                fetchVenues();
+                fetchReaders();
+            }
+        }
+
+        // --- READER MANAGEMENT LOGIC ---
+        const READER_API_URL = '/api/admin/readers';
+        let allReaders = [];
+
+        async function fetchReaders() {
+            try {
+                const res = await fetch(READER_API_URL);
+                const json = await res.json();
+                allReaders = json.data || [];
+                const readersList = document.getElementById('readersList');
+                readersList.innerHTML = '';
+                allReaders.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">${r.deviceIdentifier}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${r.venue ? r.venue.room : 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">${r.status}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="editReader(${r.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                            <button onclick="deleteReader(${r.id})" class="text-red-600 hover:text-red-900">Delete</button>
+                        </td>
+                    `;
+                    readersList.appendChild(tr);
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        document.getElementById('readerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const readerId = document.getElementById('readerId').value;
+            const payload = {
+                roomId: document.getElementById('readerVenueId').value,
+                deviceIdentifier: document.getElementById('deviceIdentifier').value,
+                status: document.getElementById('readerStatus').value
+            };
+            const method = readerId ? 'PUT' : 'POST';
+            const url = readerId ? `${READER_API_URL}/${readerId}` : READER_API_URL;
+            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (res.ok) { resetReaderForm(); fetchReaders(); }
+        });
+
+        function editReader(id) {
+            const r = allReaders.find(r => r.id === id);
+            if (!r) return;
+            document.getElementById('readerFormTitle').innerText = 'Edit Reader';
+            document.getElementById('readerId').value = r.id;
+            document.getElementById('readerVenueId').value = r.roomId;
+            document.getElementById('deviceIdentifier').value = r.deviceIdentifier;
+            document.getElementById('readerStatus').value = r.status;
+            document.getElementById('readerSubmitBtn').innerText = 'Update';
+            document.getElementById('readerCancelBtn').classList.remove('hidden');
+        }
+
+        document.getElementById('readerCancelBtn').addEventListener('click', resetReaderForm);
+        function resetReaderForm() {
+            document.getElementById('readerFormTitle').innerText = 'Register Reader';
+            document.getElementById('readerId').value = '';
+            document.getElementById('readerForm').reset();
+            document.getElementById('readerSubmitBtn').innerText = 'Register';
+            document.getElementById('readerCancelBtn').classList.add('hidden');
+        }
+
+        async function deleteReader(id) {
+            if (confirm('Delete reader?')) {
+                await fetch(`${READER_API_URL}/${id}`, { method: 'DELETE' });
+                fetchReaders();
+            }
+        }
+
         // Load initially
         fetchUsers();
+        fetchSlots();
+        fetchVenues();
+        fetchReaders();
     </script>
 </body>
 </html>

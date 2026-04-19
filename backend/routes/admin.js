@@ -132,4 +132,218 @@ router.put('/users/:id', async (req, res) => {
     }
 });
 
+// DELETE USER
+router.delete('/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.user.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'User deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// --- SLOT MANAGEMENT ---
+
+// GET ALL SLOTS
+router.get('/slots', async (req, res) => {
+    try {
+        const slots = await prisma.slot.findMany({
+            orderBy: [
+                { dayOfWeek: 'asc' },
+                { startTime: 'asc' }
+            ]
+        });
+        res.json({ data: slots });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// CREATE SLOT
+router.post('/slots', async (req, res) => {
+    try {
+        const { slotName, dayOfWeek, startTime, endTime } = req.body;
+        const slot = await prisma.slot.create({
+            data: {
+                slotName,
+                dayOfWeek,
+                startTime: new Date(startTime),
+                endTime: new Date(endTime)
+            }
+        });
+        res.json({ data: slot });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// UPDATE SLOT
+router.put('/slots/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { slotName, dayOfWeek, startTime, endTime } = req.body;
+        const slot = await prisma.slot.update({
+            where: { id: parseInt(id) },
+            data: {
+                slotName,
+                dayOfWeek,
+                startTime: new Date(startTime),
+                endTime: new Date(endTime)
+            }
+        });
+        res.json({ data: slot });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// DELETE SLOT
+router.delete('/slots/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.slot.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'Slot deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// --- VENUE MANAGEMENT ---
+
+// GET ALL VENUES
+router.get('/venues', async (req, res) => {
+    try {
+        const venues = await prisma.venue.findMany({
+            orderBy: { block: 'asc' }
+        });
+        res.json({ data: venues });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// CREATE VENUE
+router.post('/venues', async (req, res) => {
+    try {
+        const { room, block } = req.body;
+        const venue = await prisma.venue.create({
+            data: { room, block }
+        });
+        res.json({ data: venue });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// UPDATE VENUE
+router.put('/venues/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { room, block } = req.body;
+        const venue = await prisma.venue.update({
+            where: { id: parseInt(id) },
+            data: { room, block }
+        });
+        res.json({ data: venue });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// DELETE VENUE
+router.delete('/venues/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.venue.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'Venue deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// --- RFID READER MANAGEMENT ---
+
+// GET ALL READERS
+router.get('/readers', async (req, res) => {
+    try {
+        const readers = await prisma.rFIDReader.findMany({
+            include: { venue: true }
+        });
+        res.json({ data: readers });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// CREATE READER
+router.post('/readers', async (req, res) => {
+    try {
+        const { roomId, deviceIdentifier, status } = req.body;
+        const reader = await prisma.rFIDReader.create({
+            data: {
+                roomId: parseInt(roomId),
+                deviceIdentifier,
+                status: status || 'ACTIVE'
+            },
+            include: { venue: true }
+        });
+        res.json({ data: reader });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// UPDATE READER
+router.put('/readers/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { roomId, deviceIdentifier, status } = req.body;
+        const reader = await prisma.rFIDReader.update({
+            where: { id: parseInt(id) },
+            data: {
+                roomId: parseInt(roomId),
+                deviceIdentifier,
+                status
+            },
+            include: { venue: true }
+        });
+        res.json({ data: reader });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// DELETE READER
+router.delete('/readers/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.rFIDReader.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'Reader deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 export default router;
