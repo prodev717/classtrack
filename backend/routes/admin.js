@@ -23,6 +23,10 @@ router.post('/users', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        if (!role) {
+            return res.status(400).json({ error: 'Role is required' });
+        }
+
         const user = await prisma.user.create({
             data: {
                 name,
@@ -188,12 +192,14 @@ router.get('/slots', async (req, res) => {
 router.post('/slots', async (req, res) => {
     try {
         const { slotName, dayOfWeek, startTime, endTime } = req.body;
+        // Combine time string with an arbitrary date to store as DateTime
+        const baseDate = "2000-01-01T";
         const slot = await prisma.slot.create({
             data: {
                 slotName,
                 dayOfWeek,
-                startTime: new Date(startTime),
-                endTime: new Date(endTime)
+                startTime: new Date(`${baseDate}${startTime}:00`),
+                endTime: new Date(`${baseDate}${endTime}:00`)
             }
         });
         res.json({ data: slot });
@@ -208,13 +214,14 @@ router.put('/slots/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { slotName, dayOfWeek, startTime, endTime } = req.body;
+        const baseDate = "2000-01-01T";
         const slot = await prisma.slot.update({
             where: { id: parseInt(id) },
             data: {
                 slotName,
                 dayOfWeek,
-                startTime: new Date(startTime),
-                endTime: new Date(endTime)
+                startTime: new Date(`${baseDate}${startTime}${startTime.includes(':') && startTime.split(':').length === 2 ? ':00' : ''}`),
+                endTime: new Date(`${baseDate}${endTime}${endTime.includes(':') && endTime.split(':').length === 2 ? ':00' : ''}`)
             }
         });
         res.json({ data: slot });
@@ -360,6 +367,92 @@ router.delete('/readers/:id', async (req, res) => {
             where: { id: parseInt(id) }
         });
         res.json({ message: 'Reader deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// --- COURSE MANAGEMENT ---
+
+// GET ALL COURSES
+router.get('/courses', async (req, res) => {
+    try {
+        const courses = await prisma.course.findMany({
+            include: { slots: true },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json({ data: courses });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// CREATE COURSE
+router.post('/courses', async (req, res) => {
+    try {
+        const { courseName, courseCode, slotIds } = req.body;
+
+        const existing = await prisma.course.findUnique({
+            where: { courseCode }
+        });
+
+        if (existing) {
+            return res.status(400).json({ error: 'Course code already exists' });
+        }
+
+        const course = await prisma.course.create({
+            data: { 
+                courseName, 
+                courseCode,
+                slots: {
+                    connect: (slotIds || []).map(id => ({ id: parseInt(id) }))
+                }
+            },
+            include: { slots: true }
+        });
+        res.json({ data: course });
+    } catch (err) {
+        if (err.code === 'P2002') {
+            return res.status(400).json({ error: 'Course code must be unique' });
+        }
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// UPDATE COURSE
+router.put('/courses/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { courseName, courseCode, slotIds } = req.body;
+        const course = await prisma.course.update({
+            where: { id: parseInt(id) },
+            data: { 
+                courseName, 
+                courseCode,
+                slots: {
+                    set: (slotIds || []).map(id => ({ id: parseInt(id) }))
+                }
+            },
+            include: { slots: true }
+        });
+        res.json({ data: course });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// DELETE COURSE
+router.delete('/courses/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.course.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'Course deleted' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });

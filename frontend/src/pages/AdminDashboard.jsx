@@ -6,6 +6,7 @@ import {
     Calendar, 
     MapPin, 
     Cpu, 
+    BookOpen,
     Plus, 
     Edit2, 
     Trash2, 
@@ -21,6 +22,7 @@ const AdminDashboard = () => {
     const [user, setUser] = useState(null);
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [processing, setProcessing] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [formData, setFormData] = useState({});
@@ -32,12 +34,22 @@ const AdminDashboard = () => {
                 const res = await api.get('/auth/me');
                 if (res.data.data.role !== 'ADMIN') navigate('/');
                 setUser(res.data.data);
+                // Also fetch slots globally for course modal
+                fetchSlots();
             } catch (err) {
                 navigate('/login');
             }
         };
         fetchMe();
     }, [navigate]);
+
+    const [allSlots, setAllSlots] = useState([]);
+    const fetchSlots = async () => {
+        try {
+            const res = await api.get('/admin/slots');
+            setAllSlots(res.data.data);
+        } catch (err) {}
+    };
 
     useEffect(() => {
         fetchData();
@@ -62,16 +74,20 @@ const AdminDashboard = () => {
 
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this item?')) return;
+        setProcessing(true);
         try {
             await api.delete(`/admin/${activeTab}/${id}`);
             fetchData();
         } catch (err) {
-            alert('Delete failed');
+            alert(err.response?.data?.error || 'Delete failed');
+        } finally {
+            setProcessing(false);
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setProcessing(true);
         try {
             if (editingItem) {
                 await api.put(`/admin/${activeTab}/${editingItem.id}`, formData);
@@ -83,13 +99,20 @@ const AdminDashboard = () => {
             setFormData({});
             fetchData();
         } catch (err) {
-            alert('Operation failed');
+            alert(err.response?.data?.error || 'Operation failed');
+        } finally {
+            setProcessing(false);
         }
     };
 
     const openEdit = (item) => {
         setEditingItem(item);
-        if (activeTab === 'users') {
+        if (activeTab === 'courses' && item.slots) {
+            setFormData({ 
+                ...item, 
+                slotIds: item.slots.map(s => s.id) 
+            });
+        } else if (activeTab === 'users') {
             setFormData({
                 name: item.name,
                 email: item.email,
@@ -100,16 +123,34 @@ const AdminDashboard = () => {
                 department: item.student?.department || item.faculty?.department || ''
             });
         } else if (activeTab === 'slots') {
+            const formatTime = (isoStr) => {
+                const date = new Date(isoStr);
+                return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+            };
             setFormData({
                 slotName: item.slotName,
                 dayOfWeek: item.dayOfWeek,
-                startTime: item.startTime.split('T')[0],
-                endTime: item.endTime.split('T')[0]
+                startTime: formatTime(item.startTime),
+                endTime: formatTime(item.endTime)
+            });
+        } else if (activeTab === 'courses') {
+            setFormData({
+                courseName: item.courseName,
+                courseCode: item.courseCode
             });
         } else {
             setFormData(item);
         }
         setIsModalOpen(true);
+    };
+
+    const toggleSlot = (id) => {
+        const currentIds = formData.slotIds || [];
+        if (currentIds.includes(id)) {
+            setFormData({ ...formData, slotIds: currentIds.filter(i => i !== id) });
+        } else {
+            setFormData({ ...formData, slotIds: [...currentIds, id] });
+        }
     };
 
     const renderUsers = () => (
@@ -172,7 +213,9 @@ const AdminDashboard = () => {
                     <h5 className="text-lg font-bold text-slate-800">{s.slotName}</h5>
                     <div className="mt-4 flex items-center gap-2 text-slate-500 text-sm">
                         <span className="bg-slate-100 px-2 py-1 rounded font-bold text-slate-700">{s.dayOfWeek}</span>
-                        <span>{new Date(s.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(s.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span>
+                            {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })} - {new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </span>
                     </div>
                 </div>
             ))}
@@ -228,6 +271,26 @@ const AdminDashboard = () => {
         </div>
     );
 
+    const renderCourses = () => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {data.map((c) => (
+                <div key={c.id} className="bg-white border border-slate-200 rounded-2xl p-6 hover:shadow-md transition group">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="bg-amber-50 p-3 rounded-xl text-amber-600">
+                            <BookOpen className="w-6 h-6" />
+                        </div>
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                            <button onClick={() => openEdit(c)} className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-lg"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => handleDelete(c.id)} className="p-2 hover:bg-red-50 text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                    </div>
+                    <h5 className="text-lg font-bold text-slate-800">{c.courseName}</h5>
+                    <p className="text-sm text-slate-500 font-mono mt-1">{c.courseCode}</p>
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-slate-50 flex">
             {/* Sidebar */}
@@ -238,7 +301,7 @@ const AdminDashboard = () => {
                             <Cpu className="w-6 h-6 text-indigo-300" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black tracking-tight">ClassTrack</h1>
+                            <h1 className="text-2xl font-black tracking-tight text-white">ClassTrack</h1>
                             <p className="text-indigo-400 text-[10px] font-bold uppercase tracking-[0.2em]">Administrator</p>
                         </div>
                     </div>
@@ -247,6 +310,7 @@ const AdminDashboard = () => {
                 <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto">
                     {[
                         { id: 'users', label: 'Users', icon: Users },
+                        { id: 'courses', label: 'Courses', icon: BookOpen },
                         { id: 'slots', label: 'Time Slots', icon: Calendar },
                         { id: 'venues', label: 'Venues', icon: MapPin },
                         { id: 'readers', label: 'RFID Readers', icon: Cpu }
@@ -289,7 +353,7 @@ const AdminDashboard = () => {
                         <p className="text-slate-500 mt-2 font-medium">Control and manage system {activeTab} across the infrastructure.</p>
                     </div>
                     <button 
-                        onClick={() => { setEditingItem(null); setFormData({}); setIsModalOpen(true); }}
+                        onClick={() => { setEditingItem(null); setFormData({ role: 'STUDENT' }); setIsModalOpen(true); }}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-indigo-200 flex items-center gap-3 transition-all active:scale-95"
                     >
                         <Plus className="w-6 h-6" />
@@ -305,6 +369,7 @@ const AdminDashboard = () => {
                     ) : (
                         <>
                             {activeTab === 'users' && renderUsers()}
+                            {activeTab === 'courses' && renderCourses()}
                             {activeTab === 'slots' && renderSlots()}
                             {activeTab === 'venues' && renderVenues()}
                             {activeTab === 'readers' && renderReaders()}
@@ -395,11 +460,11 @@ const AdminDashboard = () => {
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
                                             <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Start Time</label>
-                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="datetime-local" value={formData.startTime || ''} onChange={e => setFormData({...formData, startTime: e.target.value})} required />
+                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="time" value={formData.startTime || ''} onChange={e => setFormData({...formData, startTime: e.target.value})} required />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-slate-600 mb-2 px-1">End Time</label>
-                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="datetime-local" value={formData.endTime || ''} onChange={e => setFormData({...formData, endTime: e.target.value})} required />
+                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="time" value={formData.endTime || ''} onChange={e => setFormData({...formData, endTime: e.target.value})} required />
                                         </div>
                                     </div>
                                 </div>
@@ -438,9 +503,48 @@ const AdminDashboard = () => {
                                 </div>
                             )}
 
+                            {activeTab === 'courses' && (
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Course Name</label>
+                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.courseName || ''} onChange={e => setFormData({...formData, courseName: e.target.value})} required placeholder="e.g. Computer Networks" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Course Code</label>
+                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.courseCode || ''} onChange={e => setFormData({...formData, courseCode: e.target.value})} required placeholder="e.g. CS101" />
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Time Slots</label>
+                                        <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-2xl border border-slate-200">
+                                            {allSlots.map(s => (
+                                                <div 
+                                                    key={s.id} 
+                                                    onClick={() => toggleSlot(s.id)}
+                                                    className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                                                        (formData.slotIds || []).includes(s.id) 
+                                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' 
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'
+                                                    }`}
+                                                >
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-black uppercase opacity-60">{s.dayOfWeek}</span>
+                                                        <span className="text-xs font-bold">{s.slotName}</span>
+                                                    </div>
+                                                    { (formData.slotIds || []).includes(s.id) && <Check className="w-4 h-4" /> }
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="pt-8 border-t border-slate-100 flex gap-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black rounded-2xl transition">Cancel</button>
-                                <button type="submit" className="flex-[2] px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 transition">
+                                <button type="submit" disabled={processing} className={`flex-[2] px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 transition flex items-center justify-center gap-2 ${processing ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                                    {processing && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
                                     {editingItem ? 'Save Changes' : `Create ${activeTab.slice(0, -1)}`}
                                 </button>
                             </div>

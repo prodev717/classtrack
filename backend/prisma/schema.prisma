@@ -31,7 +31,8 @@ model StudentProfile {
   regNumber  String @unique
   department String
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes Class[]
 }
 
 model FacultyProfile {
@@ -39,7 +40,8 @@ model FacultyProfile {
   employeeId String @unique
   department String
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes Class[]
 }
 
 model AdminProfile {
@@ -56,6 +58,7 @@ model Slot {
   endTime   DateTime
 
   createdAt DateTime @default(now())
+  courses   Course[]
 
   @@index([dayOfWeek, startTime, endTime])
 }
@@ -76,8 +79,9 @@ model Venue {
   block       String
   createdAt   DateTime     @default(now())
   rfidReaders RFIDReader[]
+  classes     Class[]
 
-  @@unique([room, block]) // prevents duplicate rooms in same block
+  @@unique([room, block])
 }
 
 enum DeviceStatus {
@@ -95,4 +99,27 @@ model RFIDReader {
   venue Venue @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([roomId])
+}
+
+model Course {
+  id         Int      @id @default(autoincrement())
+  courseName String   @map("course_name")
+  courseCode String   @unique @map("course_code")
+  slots      Slot[]
+  classes    Class[]
+  createdAt  DateTime @default(now())
+}
+
+model Class {
+  id        Int @id @default(autoincrement())
+  facultyId Int @map("facultyid")
+  venueId   Int @map("roomid")
+  courseId  Int
+
+  faculty  FacultyProfile   @relation(fields: [facultyId], references: [userId])
+  venue    Venue            @relation(fields: [venueId], references: [id])
+  course   Course           @relation(fields: [courseId], references: [id])
+  students StudentProfile[]
+
+  createdAt DateTime @default(now())
 }
