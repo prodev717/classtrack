@@ -57,7 +57,7 @@ const StudentDashboard = () => {
                             <CheckCircle className="w-24 h-24" />
                         </div>
                         <p className="text-slate-500 font-medium mb-1">Attendance</p>
-                        <p className="text-4xl font-extrabold text-indigo-600">88.5%</p>
+                        <p className="text-4xl font-extrabold text-indigo-600">--%</p>
                     </div>
 
                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
@@ -90,7 +90,7 @@ const StudentDashboard = () => {
                             </div>
                             <div className="flex items-center gap-2 text-slate-600">
                                 <Clock className="w-4 h-4 text-indigo-400" />
-                                <span className="text-sm">Join: 2024</span>
+                                <span className="text-sm">Join: {new Date(user.createdAt).getFullYear()}</span>
                             </div>
                         </div>
                     </div>

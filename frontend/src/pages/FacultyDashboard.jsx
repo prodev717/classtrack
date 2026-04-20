@@ -88,7 +88,7 @@ const FacultyDashboard = () => {
                             </div>
                             <div>
                                 <p className="text-slate-500 text-sm">Total Students</p>
-                                <p className="text-2xl font-bold">128</p>
+                                <p className="text-2xl font-bold">--</p>
                             </div>
                         </div>
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
@@ -97,7 +97,7 @@ const FacultyDashboard = () => {
                             </div>
                             <div>
                                 <p className="text-slate-500 text-sm">Today's Attendance</p>
-                                <p className="text-2xl font-bold">92%</p>
+                                <p className="text-2xl font-bold">--%</p>
                             </div>
                         </div>
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
