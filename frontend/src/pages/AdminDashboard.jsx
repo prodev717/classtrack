@@ -14,7 +14,10 @@ import {
     Settings,
     Search,
     X,
-    Check
+    Check,
+    BarChart3,
+    TrendingUp,
+    AlertTriangle
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -48,6 +51,7 @@ const AdminDashboard = () => {
     const [allVenues, setAllVenues] = useState([]);
     const [allFaculties, setAllFaculties] = useState([]);
     const [allStudents, setAllStudents] = useState([]);
+    const [reportsData, setReportsData] = useState(null);
 
     const fetchInitialData = async () => {
         try {
@@ -81,9 +85,14 @@ const AdminDashboard = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const url = activeTab.startsWith('attendance') ? `/${activeTab}` : `/admin/${activeTab}`;
-            const res = await api.get(url);
-            setData(res.data.data);
+            if (activeTab === 'reports') {
+                const res = await api.get('/attendance/admin/stats');
+                setReportsData(res.data.data);
+            } else {
+                const url = activeTab.startsWith('attendance') ? `/${activeTab}` : `/admin/${activeTab}`;
+                const res = await api.get(url);
+                setData(res.data.data);
+            }
         } catch (err) {
             console.error(err);
         } finally {
@@ -461,6 +470,100 @@ const AdminDashboard = () => {
         </div>
     );
 
+    const renderReports = () => {
+        if (!reportsData) return null;
+
+        return (
+            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="bg-indigo-600 p-10 rounded-[40px] text-white shadow-2xl shadow-indigo-200 relative overflow-hidden group">
+                        <TrendingUp className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10 group-hover:scale-110 transition duration-700" />
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mb-2">Total Managed Classes</p>
+                            <h3 className="text-5xl font-black">{reportsData.totalClasses}</h3>
+                        </div>
+                    </div>
+                    <div className="bg-white p-10 rounded-[40px] border border-slate-100 flex flex-col justify-center shadow-sm hover:shadow-xl transition-shadow group">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Low Attendance Classes</p>
+                        <div className="flex items-center gap-4">
+                            <span className={`text-5xl font-black ${reportsData.lowAttendanceClasses.length > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                {reportsData.lowAttendanceClasses.length}
+                            </span>
+                            {reportsData.lowAttendanceClasses.length > 0 && <AlertTriangle className="text-red-500 w-8 h-8 animate-bounce" />}
+                        </div>
+                    </div>
+                    <div className="bg-white p-10 rounded-[40px] border border-slate-100 flex flex-col justify-center shadow-sm hover:shadow-xl transition-shadow">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">System Enrollment</p>
+                        <p className="text-5xl font-black text-slate-800">{allStudents.length}</p>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between px-4">
+                        <h4 className="text-2xl font-black text-slate-800 tracking-tight">Performance Analytics</h4>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Below 75% threshold</span>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-50 border-b border-slate-100">
+                                <tr>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Course / Class</th>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Avg Presence</th>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {reportsData.classStats.sort((a, b) => a.avgAttendance - b.avgAttendance).map(cls => (
+                                    <tr key={cls.id} className="hover:bg-slate-50 transition-colors group">
+                                        <td className="px-10 py-8">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm ${cls.avgAttendance < 75 ? 'bg-red-50 text-red-500' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                    {cls.courseCode.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-slate-800 text-lg leading-tight mb-1">{cls.courseName}</p>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{cls.courseCode}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-10 py-8 text-center text-xl font-black">
+                                            <span className={cls.avgAttendance < 75 ? 'text-red-500' : 'text-slate-800'}>
+                                                {cls.avgAttendance}%
+                                            </span>
+                                        </td>
+                                        <td className="px-10 py-8">
+                                            {cls.avgAttendance < 75 ? (
+                                                <span className="bg-red-50 text-red-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-red-100">Critical</span>
+                                            ) : (
+                                                <span className="bg-emerald-50 text-emerald-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-emerald-100">Optimal</span>
+                                            )}
+                                        </td>
+                                        <td className="px-10 py-8 text-right w-80">
+                                            <div className="flex flex-col items-end gap-2">
+                                                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className={`h-full transition-all duration-1000 ${cls.avgAttendance < 75 ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'bg-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.4)]'}`} 
+                                                        style={{ width: `${cls.avgAttendance}%` }}
+                                                    ></div>
+                                                </div>
+                                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Attendance Health</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 flex">
             {/* Sidebar */}
@@ -485,7 +588,8 @@ const AdminDashboard = () => {
                         { id: 'slots', label: 'Time Slots', icon: Calendar },
                         { id: 'venues', label: 'Venues', icon: MapPin },
                         { id: 'readers', label: 'RFID Readers', icon: Cpu },
-                        { id: 'attendance/sessions', label: 'Attendance', icon: Check }
+                        { id: 'attendance/sessions', label: 'Attendance', icon: Check },
+                        { id: 'reports', label: 'Reports', icon: BarChart3 }
                     ].map((tab) => (
                         <button
                             key={tab.id}
@@ -550,6 +654,7 @@ const AdminDashboard = () => {
                             {activeTab === 'venues' && renderVenues()}
                             {activeTab === 'readers' && renderReaders()}
                             {activeTab === 'attendance/sessions' && renderAdminAttendance()}
+                            {activeTab === 'reports' && renderReports()}
                         </>
                     )}
                 </div>

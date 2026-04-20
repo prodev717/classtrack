@@ -1,22 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import {
-    User,
-    LogOut,
-    LayoutDashboard,
-    Calendar,
-    Users,
-    Settings,
-    Plus,
-    BookOpen,
-    MapPin,
-    X,
-    Check,
-    Search,
-    Edit2,
-    Trash2
-} from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, LogOut, X, Plus, Calendar, Settings, Clock, Check, Trash2, MapPin, User, ChevronRight, Edit2, Search, Download } from 'lucide-react';
 
 const FacultyDashboard = () => {
     const [user, setUser] = useState(null);
@@ -30,14 +15,15 @@ const FacultyDashboard = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [formData, setFormData] = useState({ studentIds: [] });
-    
+
     // Attendance states
     const [selectedClass, setSelectedClass] = useState(null);
     const [selectedSession, setSelectedSession] = useState(null);
     const [sessions, setSessions] = useState([]);
     const [sessionRecords, setSessionRecords] = useState([]);
+    const [classStats, setClassStats] = useState(null);
     const [attendanceLoading, setAttendanceLoading] = useState(false);
-    
+
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -166,6 +152,15 @@ const FacultyDashboard = () => {
 
     // --- ATTENDANCE ACTIONS ---
 
+    const fetchClassStats = async (classId) => {
+        try {
+            const res = await api.get(`/attendance/faculty/class/${classId}/stats`);
+            setClassStats(res.data.data);
+        } catch (err) {
+            console.error('Failed to fetch class stats', err);
+        }
+    };
+
     const fetchSessions = async (classId) => {
         setAttendanceLoading(true);
         setActiveTab('sessions');
@@ -174,6 +169,7 @@ const FacultyDashboard = () => {
             setSessions(res.data.data);
             const cls = classes.find(c => c.id === classId);
             setSelectedClass(cls);
+            fetchClassStats(classId);
         } catch (err) {
             console.error(err);
         } finally {
@@ -214,6 +210,86 @@ const FacultyDashboard = () => {
         }
     };
 
+    const downloadAttendanceReport = async () => {
+        if (!selectedClass) return;
+        setProcessing(true);
+        try {
+            const res = await api.get(`/attendance/classes/${selectedClass.id}/report`);
+            const { data, columns } = res.data;
+            
+            // Generate CSV
+            const header = columns.join(',');
+            const rows = data.map(row => 
+                columns.map(col => `"${row[col] || ''}"`).join(',')
+            );
+            const csvContent = [header, ...rows].join('\n');
+            
+            // Download file
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${selectedClass.course?.courseCode}_Attendance_Report.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error(err);
+            alert('Failed to generate report');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const renderTimetable = () => {
+        const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+        
+        // Flatten all slots from all classes
+        const allSlots = classes.flatMap(c => 
+            c.course?.slots?.map(slot => ({
+                ...slot,
+                courseName: c.course.courseName,
+                courseCode: c.course.courseCode,
+                venue: `${c.venue?.block}-${c.venue?.room}`,
+                status: c.status
+            })) || []
+        );
+
+        return (
+            <div className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                    {days.map(day => (
+                        <div key={day} className="space-y-4">
+                            <div className="bg-indigo-600 text-white p-4 rounded-2xl text-center font-black shadow-lg shadow-indigo-100 uppercase tracking-widest text-xs">
+                                {day}
+                            </div>
+                            <div className="space-y-3">
+                                {allSlots.filter(s => s.dayOfWeek === day)
+                                    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+                                    .map((slot, idx) => (
+                                        <div key={idx} className={`p-4 rounded-2xl border transition-all hover:scale-[1.02] ${slot.status === 'COMPLETED' ? 'bg-slate-50 border-slate-200 opacity-60' : 'bg-white border-indigo-100 shadow-sm hover:shadow-md'}`}>
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase leading-none mb-1">{formatTime(slot.startTime)}</p>
+                                            <h6 className="text-[11px] font-bold text-slate-800 line-clamp-2 leading-tight">{slot.courseName}</h6>
+                                            <div className="mt-2 flex items-center justify-between">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase">{slot.venue}</span>
+                                                <span className="text-[8px] font-bold bg-slate-100 px-1.5 py-0.5 rounded uppercase text-slate-500">{slot.slotName}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                {allSlots.filter(s => s.dayOfWeek === day).length === 0 && (
+                                    <div className="py-8 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest italic">
+                                        No Classes
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     if (!user) return null;
 
     const renderDashboard = () => (
@@ -226,15 +302,6 @@ const FacultyDashboard = () => {
                     <div>
                         <p className="text-slate-500 text-sm">Ongoing Classes</p>
                         <p className="text-2xl font-bold">{classes.filter(c => c.status === 'ONGOING').length}</p>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div className="bg-emerald-50 p-3 rounded-xl text-emerald-600">
-                        <Calendar className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-slate-500 text-sm">Upcoming Slots</p>
-                        <p className="text-2xl font-bold">3</p>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
@@ -326,7 +393,7 @@ const FacultyDashboard = () => {
                                             <span className="font-bold text-slate-700">{c.students?.length} Students</span>
                                         </div>
                                         <div className="flex items-center gap-4">
-                                            <button 
+                                            <button
                                                 onClick={() => fetchSessions(c.id)}
                                                 className="text-indigo-600 font-black text-sm hover:underline"
                                             >
@@ -425,10 +492,54 @@ const FacultyDashboard = () => {
                     <h4 className="text-2xl font-black text-slate-800">Attendance Sessions</h4>
                     <p className="text-slate-500 font-medium">History for {selectedClass?.course?.courseName}</p>
                 </div>
-                <button onClick={() => setActiveTab('dashboard')} className="text-indigo-600 font-bold hover:underline flex items-center gap-2">
-                    ← Back to Classes
-                </button>
+                <div className="flex gap-4">
+                    <button 
+                        onClick={downloadAttendanceReport} 
+                        disabled={processing}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-black text-sm shadow-lg shadow-emerald-100 flex items-center gap-2 transition"
+                    >
+                        <Download className="w-5 h-5" />
+                        Download Report (.csv)
+                    </button>
+                    <button onClick={() => setActiveTab('dashboard')} className="text-indigo-600 font-bold hover:underline flex items-center gap-2">
+                        ← Back to Classes
+                    </button>
+                </div>
             </div>
+
+            {classStats && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+                    <div className={`${classStats.averageAttendance < 75 ? 'bg-red-500' : 'bg-indigo-600'} p-8 rounded-[32px] text-white shadow-xl`}>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-2">Avg Attendance</p>
+                        <h3 className="text-4xl font-black">{classStats.averageAttendance}%</h3>
+                        <p className="text-[9px] font-bold mt-2 opacity-80 uppercase">{classStats.averageAttendance < 75 ? 'Critical: Below 75%' : 'Meeting Target'}</p>
+                    </div>
+                    <div className="bg-slate-50 p-8 rounded-[32px] border border-slate-200 flex flex-col justify-center">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Students</p>
+                        <p className="text-3xl font-black text-slate-800">{classStats.totalStudents}</p>
+                    </div>
+                    <div className="bg-slate-50 p-8 rounded-[32px] border border-slate-200 flex flex-col justify-center">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sessions Held</p>
+                        <p className="text-3xl font-black text-slate-800">{classStats.totalSessions}</p>
+                    </div>
+                    <div className="bg-slate-50 p-8 rounded-[32px] border border-slate-200 overflow-hidden relative">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Attendance Trend</p>
+                        <div className="flex items-end gap-1 h-12 mt-2">
+                            {classStats.trend.map((s, i) => (
+                                <div 
+                                    key={i} 
+                                    className={`w-full ${s.percentage < 75 ? 'bg-red-200 hover:bg-red-500' : 'bg-indigo-200 hover:bg-indigo-600'} rounded-t transition-colors cursor-pointer relative group`}
+                                    style={{ height: `${s.percentage}%` }}
+                                >
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[8px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap mb-1 z-20">
+                                        {s.percentage.toFixed(0)}%
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {attendanceLoading ? (
                 <div className="flex justify-center py-20">
@@ -444,11 +555,10 @@ const FacultyDashboard = () => {
                                 <div className="bg-white p-2 rounded-xl shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition">
                                     <Calendar className="w-5 h-5" />
                                 </div>
-                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${
-                                    s.status === 'OPEN' ? 'bg-green-100 text-green-700' : 
-                                    s.status === 'AUTO_CLOSED' ? 'bg-amber-100 text-amber-700' : 
-                                    'bg-slate-200 text-slate-600'
-                                }`}>
+                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${s.status === 'OPEN' ? 'bg-green-100 text-green-700' :
+                                        s.status === 'AUTO_CLOSED' ? 'bg-amber-100 text-amber-700' :
+                                            'bg-slate-200 text-slate-600'
+                                    }`}>
                                     {s.status}
                                 </span>
                             </div>
@@ -511,14 +621,13 @@ const FacultyDashboard = () => {
                                     )}
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button 
+                                    <button
                                         onClick={() => toggleAttendanceManual(s)}
                                         disabled={processing}
-                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition shadow-sm ${
-                                            s.present 
-                                            ? 'bg-white border border-red-200 text-red-600 hover:bg-red-50' 
-                                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                        }`}
+                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition shadow-sm ${s.present
+                                                ? 'bg-white border border-red-200 text-red-600 hover:bg-red-50'
+                                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                            }`}
                                     >
                                         {s.present ? 'Mark Absent' : 'Mark Present'}
                                     </button>
@@ -548,10 +657,8 @@ const FacultyDashboard = () => {
                 <nav className="flex-1 px-4 space-y-2 mt-8">
                     {[
                         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+                        { id: 'timetable', label: 'Timetable', icon: Calendar },
                         { id: 'courses_slots', label: 'Course Slots', icon: BookOpen },
-                        { id: 'attendance', label: 'Attendance', icon: Calendar },
-                        { id: 'students_list', label: 'My Students', icon: Users },
-                        { id: 'settings', label: 'Settings', icon: Settings },
                     ].map(item => (
                         <button
                             key={item.id}
@@ -599,14 +706,10 @@ const FacultyDashboard = () => {
 
                 <main className="p-12 max-w-7xl mx-auto w-full">
                     {activeTab === 'dashboard' && renderDashboard()}
+                    {activeTab === 'timetable' && renderTimetable()}
                     {activeTab === 'courses_slots' && renderCoursesSlots()}
                     {activeTab === 'sessions' && renderSessions()}
                     {activeTab === 'session_records' && renderSessionRecords()}
-                    {activeTab !== 'dashboard' && activeTab !== 'courses_slots' && activeTab !== 'sessions' && activeTab !== 'session_records' && (
-                        <div className="bg-white rounded-3xl p-20 flex flex-col items-center justify-center text-slate-300 italic border border-slate-100">
-                            Feature coming soon...
-                        </div>
-                    )}
                 </main>
             </div>
 

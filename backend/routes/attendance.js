@@ -1,5 +1,6 @@
 import prisma from '../db.js';
 import express from 'express';
+import { authenticate, authorizeFaculty, authorizeStudent, authorizeAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -254,6 +255,61 @@ router.post('/auto-close', async (req, res) => {
 // --- RETRIEVAL ENDPOINTS ---
 
 /**
+ * Get full attendance matrix for a class (CSV format)
+ */
+router.get('/classes/:classId/report', authenticate, authorizeFaculty, async (req, res) => {
+    try {
+        const { classId } = req.params;
+        const userId = req.user.id;
+
+        const classInstance = await prisma.class.findUnique({
+            where: { id: parseInt(classId) },
+            include: {
+                students: { include: { user: true } },
+                attendanceSessions: {
+                    include: { records: true },
+                    orderBy: { date: 'asc' }
+                }
+            }
+        });
+
+        if (!classInstance || classInstance.facultyId !== userId) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const sessions = classInstance.attendanceSessions;
+        const students = classInstance.students;
+
+        // Create a lookup for attendance: studentId_sessionId -> boolean
+        const attendanceMap = new Set();
+        sessions.forEach(s => {
+            s.records.forEach(r => {
+                attendanceMap.add(`${r.userId}_${s.id}`);
+            });
+        });
+
+        const report = students.map((s, idx) => {
+            const studentData = {
+                'SNo': idx + 1,
+                'Name': s.user.name,
+                'RegNo': s.regNumber
+            };
+
+            sessions.forEach(session => {
+                const dateKey = new Date(session.date).toLocaleDateString();
+                studentData[dateKey] = attendanceMap.has(`${s.userId}_${session.id}`) ? 'Present' : 'Absent';
+            });
+
+            return studentData;
+        });
+
+        res.json({ data: report, columns: ['SNo', 'Name', 'RegNo', ...sessions.map(s => new Date(s.date).toLocaleDateString())] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
  * Get all sessions for a specific class (Faculty/Admin)
  */
 router.get('/classes/:classId/sessions', async (req, res) => {
@@ -417,5 +473,157 @@ router.delete('/sessions/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// --- REPORTING & STATS ENDPOINTS ---
+
+/**
+ * Get stats for logged-in student
+ */
+router.get('/student/stats', authenticate, authorizeStudent, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        // Find all classes the student is enrolled in
+        const enrolledClasses = await prisma.class.findMany({
+            where: { students: { some: { userId } } },
+            include: {
+                course: true,
+                attendanceSessions: {
+                    include: {
+                        records: { where: { userId } }
+                    }
+                }
+            }
+        });
+
+        const stats = enrolledClasses.map(c => {
+            const totalSessions = c.attendanceSessions.length;
+            const attendedSessions = c.attendanceSessions.filter(s => s.records.length > 0).length;
+            const percentage = totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0;
+            
+            return {
+                classId: c.id,
+                courseName: c.course.courseName,
+                courseCode: c.course.courseCode,
+                totalSessions,
+                attendedSessions,
+                percentage: parseFloat(percentage.toFixed(2)),
+                status: percentage >= 75 ? 'GOOD' : 'LOW'
+            };
+        });
+
+        const overallTotal = stats.reduce((acc, curr) => acc + curr.totalSessions, 0);
+        const overallAttended = stats.reduce((acc, curr) => acc + curr.attendedSessions, 0);
+        const overallPercentage = overallTotal > 0 ? (overallAttended / overallTotal) * 100 : 0;
+
+        res.json({
+            data: {
+                classWise: stats,
+                overall: {
+                    attended: overallAttended,
+                    total: overallTotal,
+                    percentage: parseFloat(overallPercentage.toFixed(2)),
+                    status: overallPercentage >= 75 ? 'GOOD' : 'LOW'
+                }
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * Get stats for faculty classes
+ */
+router.get('/faculty/class/:classId/stats', authenticate, authorizeFaculty, async (req, res) => {
+    try {
+        const { classId } = req.params;
+        const userId = req.user.id;
+
+        const classInstance = await prisma.class.findUnique({
+            where: { id: parseInt(classId) },
+            include: {
+                course: true,
+                students: true,
+                attendanceSessions: {
+                    include: {
+                        _count: { select: { records: true } }
+                    },
+                    orderBy: { date: 'asc' }
+                }
+            }
+        });
+
+        if (!classInstance || classInstance.facultyId !== userId) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const totalStudents = classInstance.students.length;
+        const sessionStats = classInstance.attendanceSessions.map(s => ({
+            date: s.date,
+            present: s._count.records,
+            percentage: totalStudents > 0 ? (s._count.records / totalStudents) * 100 : 0
+        }));
+
+        const avgAttendance = sessionStats.length > 0 
+            ? sessionStats.reduce((acc, curr) => acc + curr.percentage, 0) / sessionStats.length 
+            : 0;
+
+        res.json({
+            data: {
+                className: classInstance.course.courseName,
+                totalStudents,
+                totalSessions: sessionStats.length,
+                averageAttendance: parseFloat(avgAttendance.toFixed(2)),
+                trend: sessionStats.slice(-10) // Last 10 sessions
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * Admin High Level Stats
+ */
+router.get('/admin/stats', authenticate, authorizeAdmin, async (req, res) => {
+    try {
+        const classes = await prisma.class.findMany({
+            include: {
+                course: true,
+                students: true,
+                attendanceSessions: {
+                    include: { _count: { select: { records: true } } }
+                }
+            }
+        });
+
+        const classStats = classes.map(c => {
+            const totalStudents = c.students.length;
+            const sessions = c.attendanceSessions;
+            const avgClassAttendance = sessions.length > 0
+                ? sessions.reduce((acc, s) => acc + (totalStudents > 0 ? (s._count.records / totalStudents) * 100 : 0), 0) / sessions.length
+                : 0;
+
+            return {
+                id: c.id,
+                courseName: c.course.courseName,
+                courseCode: c.course.courseCode,
+                avgAttendance: parseFloat(avgClassAttendance.toFixed(2))
+            };
+        });
+
+        res.json({
+            data: {
+                totalClasses: classes.length,
+                classStats,
+                lowAttendanceClasses: classStats.filter(c => c.avgAttendance < 75)
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 export default router;

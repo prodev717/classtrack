@@ -1,17 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { 
-    User, 
-    LogOut, 
-    CheckCircle, 
-    Clock, 
-    BookOpen, 
-    UserCircle, 
-    Mail, 
-    MapPin, 
-    Calendar 
-} from 'lucide-react';
+import { User, LogOut, CheckCircle, Clock, BookOpen, Mail, MapPin, Calendar, AlertCircle } from 'lucide-react';
 
 const StudentDashboard = () => {
     const [user, setUser] = useState(null);
@@ -20,6 +10,7 @@ const StudentDashboard = () => {
     const [activeTab, setActiveTab] = useState('courses');
     const [loading, setLoading] = useState(true);
     const [recordsLoading, setRecordsLoading] = useState(false);
+    const [stats, setStats] = useState(null);
     const navigate = useNavigate();
 
     const formatTime = (dateStr) => {
@@ -51,8 +42,11 @@ const StudentDashboard = () => {
     const fetchEnrolledClasses = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/student/classes');
-            setEnrolledClasses(res.data.data);
+            const classRes = await api.get('/student/classes');
+            setEnrolledClasses(classRes.data.data);
+            
+            const statsRes = await api.get('/attendance/student/stats');
+            setStats(statsRes.data.data);
         } catch (err) {
             console.error('Failed to fetch classes', err);
         } finally {
@@ -129,7 +123,7 @@ const StudentDashboard = () => {
                 {/* Profile Card */}
                 <div className="bg-white p-10 rounded-[40px] shadow-sm border border-slate-100 flex flex-col md:flex-row items-center gap-10">
                     <div className="w-40 h-40 bg-indigo-50 rounded-[40px] flex items-center justify-center text-indigo-600 border-4 border-white shadow-2xl relative">
-                         <UserCircle className="w-24 h-24 stroke-[1]" />
+                         <User className="w-24 h-24 stroke-[1]" />
                          <div className="absolute -bottom-2 -right-2 bg-emerald-500 w-8 h-8 rounded-full border-4 border-white"></div>
                     </div>
                     
@@ -152,6 +146,41 @@ const StudentDashboard = () => {
                     </div>
                 </div>
 
+                {stats && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 px-12 -mt-10 mb-12">
+                        <div className="bg-white p-8 rounded-[32px] shadow-xl shadow-indigo-100 border border-slate-50">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Overall Attendance</p>
+                            <div className="flex items-end gap-2">
+                                <span className={`text-4xl font-black ${stats.overall.percentage < 75 ? 'text-red-500' : 'text-indigo-600'}`}>
+                                    {stats.overall.percentage}%
+                                </span>
+                                <span className="text-xs font-bold text-slate-400 mb-1">/ 100%</span>
+                            </div>
+                            <div className="mt-4 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div 
+                                    className={`h-full transition-all duration-1000 ${stats.overall.percentage < 75 ? 'bg-red-500' : 'bg-indigo-600'}`}
+                                    style={{ width: `${stats.overall.percentage}%` }}
+                                ></div>
+                            </div>
+                            {stats.overall.percentage < 75 && (
+                                <p className="text-[9px] font-black text-red-500 mt-2 uppercase animate-pulse">Critical: Below 75%</p>
+                            )}
+                        </div>
+                        <div className="bg-white p-8 rounded-[32px] shadow-xl shadow-indigo-100 border border-slate-50 flex flex-col justify-center">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Classes</p>
+                            <p className="text-3xl font-black text-slate-800">{stats.classWise.length}</p>
+                        </div>
+                        <div className="bg-white p-8 rounded-[32px] shadow-xl shadow-indigo-100 border border-slate-50 flex flex-col justify-center">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Attended</p>
+                            <p className="text-3xl font-black text-emerald-600">{stats.overall.attended} <span className="text-sm text-slate-300">Sessions</span></p>
+                        </div>
+                        <div className="bg-white p-8 rounded-[32px] shadow-xl shadow-indigo-100 border border-slate-50 flex flex-col justify-center">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sessions</p>
+                            <p className="text-3xl font-black text-slate-800">{stats.overall.total}</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Navigation Tabs */}
                 <div className="flex gap-4 border-b border-slate-200">
                     <button 
@@ -165,6 +194,12 @@ const StudentDashboard = () => {
                         className={`px-6 py-4 font-black transition-all border-b-4 ${activeTab === 'attendance' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                     >
                         Attendance History
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('timetable')}
+                        className={`px-6 py-4 font-black transition-all border-b-4 ${activeTab === 'timetable' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Timetable
                     </button>
                 </div>
 
@@ -224,9 +259,23 @@ const StudentDashboard = () => {
                                         </div>
 
                                         <div className="mt-8 pt-6 border-t border-slate-50 flex justify-between items-center">
-                                            <button className="bg-slate-50 hover:bg-indigo-50 text-indigo-600 px-5 py-2 rounded-xl text-xs font-black transition">
-                                                View Info
-                                            </button>
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Attendance</p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-lg font-black ${
+                                                        (stats?.classWise?.find(s => s.classId === c.id)?.percentage || 0) < 75 
+                                                        ? 'text-red-500' 
+                                                        : 'text-indigo-600'
+                                                    }`}>
+                                                        {stats?.classWise?.find(s => s.classId === c.id)?.percentage || 0}%
+                                                    </span>
+                                                    { (stats?.classWise?.find(s => s.classId === c.id)?.percentage || 0) < 75 && (
+                                                        <span className="bg-red-50 text-red-500 p-1 rounded-md">
+                                                            <AlertCircle className="w-3 h-3" />
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
                                             <div className="flex items-center gap-1.5">
                                                 <div className={`w-2 h-2 ${c.status === 'COMPLETED' ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'} rounded-full`}></div>
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -240,7 +289,7 @@ const StudentDashboard = () => {
                         </div>
                     )}
                 </div>
-                ) : (
+                ) : activeTab === 'attendance' ? (
                     <div className="space-y-6">
                         <h3 className="text-2xl font-black text-slate-800 px-2 tracking-tight">Attendance Log</h3>
                         
@@ -299,6 +348,45 @@ const StudentDashboard = () => {
                                 </table>
                             </div>
                         )}
+                    </div>
+                ) : (
+                    <div className="space-y-8">
+                        <h3 className="text-2xl font-black text-slate-800 px-2 tracking-tight">Weekly Timetable</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                            {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => {
+                                const daySlots = enrolledClasses.flatMap(c => 
+                                    c.course?.slots?.filter(s => s.dayOfWeek === day).map(s => ({
+                                        ...s,
+                                        courseName: c.course.courseName,
+                                        venue: `${c.venue?.block}-${c.venue?.room}`,
+                                        faculty: c.faculty?.user?.name
+                                    })) || []
+                                ).sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+                                return (
+                                    <div key={day} className="space-y-4">
+                                        <div className="bg-indigo-600 text-white p-3 rounded-xl text-center font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-100">
+                                            {day}
+                                        </div>
+                                        <div className="space-y-3">
+                                            {daySlots.map((slot, idx) => (
+                                                <div key={idx} className="bg-white p-4 rounded-2xl border border-indigo-50 shadow-sm hover:shadow-md transition-all hover:scale-[1.02]">
+                                                    <p className="text-[9px] font-black text-indigo-400 uppercase leading-none mb-1">{formatTime(slot.startTime)}</p>
+                                                    <h6 className="text-[10px] font-black text-slate-800 line-clamp-1 leading-tight">{slot.courseName}</h6>
+                                                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">{slot.venue}</p>
+                                                    <p className="text-[8px] font-medium text-slate-400 italic">Prof. {slot.faculty}</p>
+                                                </div>
+                                            ))}
+                                            {daySlots.length === 0 && (
+                                                <div className="py-8 text-center text-[9px] font-bold text-slate-200 uppercase italic">
+                                                    Free Day
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
             </main>
