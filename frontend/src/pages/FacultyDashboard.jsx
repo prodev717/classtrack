@@ -117,12 +117,26 @@ const FacultyDashboard = () => {
         }
     };
 
+    const handleEndClass = async (id) => {
+        if (!window.confirm('Are you sure you want to end this class? This indicates the end of the semester for this course.')) return;
+        setProcessing(true);
+        try {
+            await api.patch(`/faculty/classes/${id}/end`);
+            fetchClasses();
+        } catch (err) {
+            alert(err.response?.data?.error || 'Failed to end class');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
     const openEdit = (c) => {
         setEditingItem(c);
         setFormData({
             courseId: c.courseId,
             venueId: c.venueId,
-            studentIds: c.students?.map(s => s.userId) || []
+            studentIds: c.students?.map(s => s.userId) || [],
+            status: c.status
         });
         setIsModalOpen(true);
     };
@@ -152,8 +166,8 @@ const FacultyDashboard = () => {
                         <Users className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-slate-500 text-sm">Active Classes</p>
-                        <p className="text-2xl font-bold">{classes.length}</p>
+                        <p className="text-slate-500 text-sm">Ongoing Classes</p>
+                        <p className="text-2xl font-bold">{classes.filter(c => c.status === 'ONGOING').length}</p>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
@@ -217,9 +231,20 @@ const FacultyDashboard = () => {
                                     </div>
 
                                     <div className="mb-4">
-                                        <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider mb-2 inline-block">
-                                            {c.course?.courseCode}
-                                        </span>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block">
+                                                {c.course?.courseCode}
+                                            </span>
+                                            {c.status === 'COMPLETED' ? (
+                                                <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block flex items-center gap-1">
+                                                    <Check className="w-3 h-3" /> Completed
+                                                </span>
+                                            ) : (
+                                                <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block">
+                                                    Ongoing
+                                                </span>
+                                            )}
+                                        </div>
                                         <h5 className="text-xl font-black text-slate-800 mb-1">{c.course?.courseName}</h5>
                                         <div className="flex items-center gap-2 text-slate-500 text-sm">
                                             <MapPin className="w-4 h-4" />
@@ -227,12 +252,32 @@ const FacultyDashboard = () => {
                                         </div>
                                     </div>
 
+                                    <div className="flex flex-wrap gap-1 mb-4">
+                                        {c.course?.slots?.map(slot => (
+                                            <div key={slot.id} className="bg-white border border-slate-200 px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
+                                                <span className="text-[9px] font-black text-indigo-600 uppercase leading-none">{slot.dayOfWeek}</span>
+                                                <span className="text-[10px] font-bold text-slate-600">{formatTime(slot.startTime)}</span>
+                                                <span className="text-[8px] font-black bg-slate-100 px-1 rounded text-slate-400 border border-slate-200 ml-0.5">{slot.slotName}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+
                                     <div className="mt-auto flex items-center justify-between pt-6 border-t border-slate-200">
                                         <div className="flex items-center gap-2">
                                             <Users className="w-4 h-4 text-slate-400" />
                                             <span className="font-bold text-slate-700">{c.students?.length} Students</span>
                                         </div>
-                                        <button className="text-indigo-600 font-black text-sm hover:underline">View Attendance →</button>
+                                        <div className="flex items-center gap-4">
+                                            <button className="text-indigo-600 font-black text-sm hover:underline">View Attendance →</button>
+                                            {c.status === 'ONGOING' && (
+                                                <button 
+                                                    onClick={() => handleEndClass(c.id)}
+                                                    className="bg-slate-200 hover:bg-red-100 text-slate-600 hover:text-red-700 px-3 py-1 rounded-lg text-[10px] font-black transition-colors"
+                                                >
+                                                    End Semester
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -400,29 +445,42 @@ const FacultyDashboard = () => {
                         <form onSubmit={handleCreateOrUpdateClass} className="p-10 space-y-8">
                             <div className="grid grid-cols-2 gap-8">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Course</label>
-                                    <select 
-                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
-                                        value={formData.courseId || ''}
-                                        onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
-                                        required
-                                    >
-                                        <option value="">Choose a course</option>
-                                        {courses.map(c => <option key={c.id} value={c.id}>{c.courseName} ({c.courseCode})</option>)}
-                                    </select>
-                                </div>
+                                     <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Course</label>
+                                     <select 
+                                         className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                         value={formData.courseId || ''}
+                                         onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
+                                         required
+                                     >
+                                         <option value="">Choose a course</option>
+                                         {courses.map(c => <option key={c.id} value={c.id}>{c.courseName} ({c.courseCode})</option>)}
+                                     </select>
+                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Venue</label>
-                                    <select 
-                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
-                                        value={formData.venueId || ''}
-                                        onChange={(e) => setFormData({ ...formData, venueId: e.target.value })}
-                                        required
-                                    >
-                                        <option value="">Choose a venue</option>
-                                        {venues.map(v => <option key={v.id} value={v.id}>{v.block} - {v.room}</option>)}
-                                    </select>
+                                     <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Class Status</label>
+                                     <select 
+                                         className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                         value={formData.status || 'ONGOING'}
+                                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                         required
+                                     >
+                                         <option value="ONGOING">Ongoing</option>
+                                         <option value="COMPLETED">Completed</option>
+                                     </select>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Venue</label>
+                                <select 
+                                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                    value={formData.venueId || ''}
+                                    onChange={(e) => setFormData({ ...formData, venueId: e.target.value })}
+                                    required
+                                >
+                                    <option value="">Choose a venue</option>
+                                    {venues.map(v => <option key={v.id} value={v.id}>{v.block} - {v.room}</option>)}
+                                </select>
                             </div>
 
                             <div>

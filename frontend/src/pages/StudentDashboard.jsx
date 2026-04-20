@@ -19,6 +19,12 @@ const StudentDashboard = () => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
+    const formatTime = (dateStr) => {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
     useEffect(() => {
         const fetchMe = async () => {
             try {
@@ -174,13 +180,25 @@ const StudentDashboard = () => {
                                             </div>
                                         </div>
 
+                                        <div className="flex flex-wrap gap-1 mt-4">
+                                            {c.course?.slots?.map(slot => (
+                                                <div key={slot.id} className="bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
+                                                    <span className="text-[9px] font-black text-indigo-600 uppercase leading-none">{slot.dayOfWeek}</span>
+                                                    <span className="text-[10px] font-bold text-slate-500">{formatTime(slot.startTime)}</span>
+                                                    <span className="text-[8px] font-black bg-white px-1 rounded text-slate-400 border border-slate-200 ml-0.5">{slot.slotName}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+
                                         <div className="mt-8 pt-6 border-t border-slate-50 flex justify-between items-center">
                                             <button className="bg-slate-50 hover:bg-indigo-50 text-indigo-600 px-5 py-2 rounded-xl text-xs font-black transition">
                                                 View Info
                                             </button>
                                             <div className="flex items-center gap-1.5">
-                                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Class</span>
+                                                <div className={`w-2 h-2 ${c.status === 'COMPLETED' ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'} rounded-full`}></div>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    {c.status === 'COMPLETED' ? 'Semester Ended' : 'Active Class'}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
