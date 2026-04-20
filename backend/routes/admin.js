@@ -459,4 +459,100 @@ router.delete('/courses/:id', async (req, res) => {
     }
 });
 
+// --- CLASS MANAGEMENT ---
+
+// GET ALL CLASSES
+router.get('/classes', async (req, res) => {
+    try {
+        const classes = await prisma.class.findMany({
+            include: {
+                course: { include: { slots: true } },
+                venue: true,
+                faculty: { include: { user: true } },
+                students: { include: { user: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json({ data: classes });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// CREATE CLASS
+router.post('/classes', async (req, res) => {
+    try {
+        const { courseId, venueId, facultyId, studentIds } = req.body;
+
+        const newClass = await prisma.class.create({
+            data: {
+                course: { connect: { id: parseInt(courseId) } },
+                venue: { connect: { id: parseInt(venueId) } },
+                faculty: { connect: { userId: parseInt(facultyId) } },
+                students: {
+                    connect: (studentIds || []).map(id => ({ userId: parseInt(id) }))
+                }
+            },
+            include: {
+                course: true,
+                venue: true,
+                faculty: { include: { user: true } },
+                students: { include: { user: true } }
+            }
+        });
+
+        res.json({ data: newClass });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// UPDATE CLASS
+router.put('/classes/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { courseId, venueId, facultyId, studentIds, status } = req.body;
+
+        const updatedClass = await prisma.class.update({
+            where: { id: parseInt(id) },
+            data: {
+                course: { connect: { id: parseInt(courseId) } },
+                venue: { connect: { id: parseInt(venueId) } },
+                faculty: { connect: { userId: parseInt(facultyId) } },
+                students: {
+                    set: (studentIds || []).map(id => ({ userId: parseInt(id) }))
+                },
+                status: status
+            },
+            include: {
+                course: true,
+                venue: true,
+                faculty: { include: { user: true } },
+                students: { include: { user: true } }
+            }
+        });
+
+        res.json({ data: updatedClass });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// DELETE CLASS
+router.delete('/classes/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.class.delete({
+            where: { id: parseInt(id) }
+        });
+        res.json({ message: 'Class deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 export default router;

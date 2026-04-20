@@ -16,7 +16,11 @@ router.get('/classes', async (req, res) => {
         const classes = await prisma.class.findMany({
             where: { facultyId: userId },
             include: {
-                course: true,
+                course: {
+                    include: {
+                        slots: true
+                    }
+                },
                 venue: true,
                 students: {
                     include: {
@@ -139,7 +143,7 @@ router.post('/classes', async (req, res) => {
 router.put('/classes/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { courseId, venueId, studentIds } = req.body;
+        const { courseId, venueId, studentIds, status } = req.body;
         const facultyId = req.user.id;
 
         // Verify ownership
@@ -185,7 +189,8 @@ router.put('/classes/:id', async (req, res) => {
                 course: { connect: { id: parseInt(courseId) } },
                 students: {
                     set: (studentIds || []).map(id => ({ userId: parseInt(id) }))
-                }
+                },
+                status: status
             }
         });
 
@@ -215,6 +220,32 @@ router.delete('/classes/:id', async (req, res) => {
         });
 
         res.json({ message: 'Class deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// END A CLASS (Mark as COMPLETED)
+router.patch('/classes/:id/end', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const facultyId = req.user.id;
+
+        const existingClass = await prisma.class.findUnique({
+            where: { id: parseInt(id) }
+        });
+
+        if (!existingClass || existingClass.facultyId !== facultyId) {
+            return res.status(403).json({ error: 'Not authorized to end this class' });
+        }
+
+        const updatedClass = await prisma.class.update({
+            where: { id: parseInt(id) },
+            data: { status: 'COMPLETED' }
+        });
+
+        res.json({ data: updatedClass });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });

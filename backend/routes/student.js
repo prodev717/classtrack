@@ -21,7 +21,11 @@ router.get('/classes', async (req, res) => {
                 }
             },
             include: {
-                course: true,
+                course: {
+                    include: {
+                        slots: true
+                    }
+                },
                 venue: true,
                 faculty: {
                     include: {

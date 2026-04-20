@@ -122,4 +122,10 @@ model Class {
   students StudentProfile[]
 
   createdAt DateTime @default(now())
+  status    ClassStatus @default(ONGOING)
+}
+
+enum ClassStatus {
+  ONGOING
+  COMPLETED
 }
