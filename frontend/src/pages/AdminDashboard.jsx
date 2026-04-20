@@ -17,7 +17,8 @@ import {
     Check,
     BarChart3,
     TrendingUp,
-    AlertTriangle
+    AlertTriangle,
+    Menu
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -29,6 +30,7 @@ const AdminDashboard = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [formData, setFormData] = useState({});
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -565,134 +567,136 @@ const AdminDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
-            {/* Sidebar */}
-            <aside className="w-72 bg-indigo-950 text-white flex flex-col sticky top-0 h-screen shadow-2xl z-20">
-                <div className="p-8 border-b border-indigo-900/50">
-                    <div className="flex items-center gap-3">
+        <div className="h-screen w-full bg-slate-50 flex overflow-hidden">
+            {/* Sidebar Desktop */}
+            <div className={`fixed inset-y-0 left-0 lg:relative transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 w-72 bg-indigo-950 text-white flex flex-col shrink-0 h-full shadow-2xl transition duration-300 z-50 overflow-hidden`}>
+                <div className="p-8 border-b border-white/5">
+                    <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
                         <div className="bg-white/10 p-2 rounded-xl">
-                            <Cpu className="w-6 h-6 text-indigo-300" />
+                            <BookOpen className="w-6 h-6 text-indigo-300" />
                         </div>
-                        <div>
-                            <h1 className="text-2xl font-black tracking-tight text-white">ClassTrack</h1>
-                            <p className="text-indigo-400 text-[10px] font-bold uppercase tracking-[0.2em]">Administrator</p>
-                        </div>
-                    </div>
+                        ClassTrack
+                    </h2>
+                    <p className="text-indigo-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 ml-12">Administration</p>
                 </div>
 
-                <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto">
+                <nav className="flex-1 px-4 space-y-2 mt-8 overflow-y-auto scrollbar-hide">
                     {[
                         { id: 'users', label: 'Users', icon: Users },
-                        { id: 'classes', label: 'Classes', icon: Calendar },
                         { id: 'courses', label: 'Courses', icon: BookOpen },
-                        { id: 'slots', label: 'Time Slots', icon: Calendar },
                         { id: 'venues', label: 'Venues', icon: MapPin },
-                        { id: 'readers', label: 'RFID Readers', icon: Cpu },
+                        { id: 'readers', label: 'IoT Readers', icon: Cpu },
+                        { id: 'classes', label: 'Classes', icon: Calendar },
                         { id: 'attendance/sessions', label: 'Attendance', icon: Check },
-                        { id: 'reports', label: 'Reports', icon: BarChart3 }
-                    ].map((tab) => (
+                        { id: 'reports', label: 'Analytics', icon: BarChart3 }
+                    ].map(item => (
                         <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold transition-all duration-300 ${activeTab === tab.id
-                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40 translate-x-2'
-                                    : 'text-indigo-300/60 hover:bg-indigo-900/40 hover:text-indigo-200'
+                            key={item.id}
+                            onClick={() => {
+                                setActiveTab(item.id);
+                                setIsSidebarOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold transition-all duration-300 ${activeTab === item.id
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40 translate-x-2'
+                                : 'text-indigo-300/60 hover:bg-white/5 hover:text-indigo-200'
                                 }`}
                         >
-                            <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? 'animate-pulse' : ''}`} />
-                            {tab.label}
+                            <item.icon className="w-5 h-5" />
+                            {item.label}
                         </button>
                     ))}
                 </nav>
+            </div>
 
-                <div className="p-6 border-t border-indigo-900/50 space-y-4">
-                    <div className="bg-indigo-900/40 p-4 rounded-2xl border border-indigo-800/50">
-                        <p className="text-[10px] text-indigo-400 font-bold uppercase mb-1">Signed in as</p>
-                        <p className="text-sm font-bold truncate">{user?.name}</p>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-6 py-4 text-red-300 hover:bg-red-500/10 rounded-2xl font-bold transition group"
-                    >
-                        <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition" />
-                        Sign Out
-                    </button>
-                </div>
-            </aside>
+            {/* Backdrop for mobile */}
+            {isSidebarOpen && (
+                <div onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"></div>
+            )}
 
             {/* Main Content */}
-            <main className="flex-1 p-12 max-w-7xl mx-auto w-full">
-                <header className="flex justify-between items-end mb-12">
-                    <div>
-                        <h2 className="text-4xl font-black text-slate-800 capitalize tracking-tight">
-                            {activeTab.includes('/') ? activeTab.split('/')[1] : activeTab} Management
-                        </h2>
-                        <p className="text-slate-500 mt-2 font-medium">Control and manage system {activeTab.includes('/') ? activeTab.split('/')[1] : activeTab} across the infrastructure.</p>
-                    </div>
-                    {activeTab !== 'attendance/sessions' && (
-                        <button
-                            onClick={() => { setEditingItem(null); setFormData({ role: 'STUDENT' }); setIsModalOpen(true); }}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-indigo-200 flex items-center gap-3 transition-all active:scale-95"
-                        >
-                            <Plus className="w-6 h-6" />
-                            Add New {activeTab.slice(0, -1)}
+            <div className="flex-1 h-full flex flex-col min-w-0 overflow-y-auto">
+                <header className="h-20 lg:h-24 bg-white/50 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 lg:px-12 sticky top-0 z-30 w-full shrink-0">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 text-indigo-600 hover:bg-slate-100 rounded-xl transition">
+                            <Menu className="w-6 h-6" />
                         </button>
-                    )}
+                        <h3 className="text-xl lg:text-2xl font-black text-slate-800 capitalize tracking-tight">{activeTab.includes('/') ? activeTab.split('/')[1] : activeTab}</h3>
+                    </div>
+                    <div className="flex items-center gap-4 bg-white p-2 pr-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="w-12 h-12 bg-indigo-600 rounded-xl shadow-md flex items-center justify-center text-white font-black text-lg shrink-0">
+                            {user?.name?.charAt(0)}
+                        </div>
+                        <div className="text-left px-2 hidden sm:block">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Administrator</p>
+                            <p className="text-sm font-black text-slate-800 truncate max-w-[120px]">{user?.name}</p>
+                        </div>
+                        <div className="pl-4 border-l border-slate-100 ml-2">
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center justify-center p-3 text-red-500 hover:bg-red-50 rounded-xl transition group"
+                                title="Sign Out"
+                            >
+                                <LogOut className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
                 </header>
 
-                <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden min-h-[600px] p-8">
-                    {loading ? (
-                        <div className="h-full flex items-center justify-center py-40">
-                            <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                    ) : (
-                        <>
-                            {activeTab === 'users' && renderUsers()}
-                            {activeTab === 'classes' && renderClasses()}
-                            {activeTab === 'courses' && renderCourses()}
-                            {activeTab === 'slots' && renderSlots()}
-                            {activeTab === 'venues' && renderVenues()}
-                            {activeTab === 'readers' && renderReaders()}
-                            {activeTab === 'attendance/sessions' && renderAdminAttendance()}
-                            {activeTab === 'reports' && renderReports()}
-                        </>
-                    )}
-                </div>
-            </main>
+                <main className="p-4 lg:p-12 max-w-7xl mx-auto w-full">
+                    <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden min-h-[600px] p-8">
+                        {loading ? (
+                            <div className="h-full flex items-center justify-center py-40">
+                                <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                        ) : (
+                            <>
+                                {activeTab === 'users' && renderUsers()}
+                                {activeTab === 'classes' && renderClasses()}
+                                {activeTab === 'courses' && renderCourses()}
+                                {activeTab === 'slots' && renderSlots()}
+                                {activeTab === 'venues' && renderVenues()}
+                                {activeTab === 'readers' && renderReaders()}
+                                {activeTab === 'attendance/sessions' && renderAdminAttendance()}
+                                {activeTab === 'reports' && renderReports()}
+                            </>
+                        )}
+                    </div>
+                </main>
+            </div>
 
             {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-300">
-                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-300">
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                             <h3 className="text-2xl font-black text-slate-800">
                                 {editingItem ? 'Edit' : 'Create New'} {activeTab.slice(0, -1)}
                             </h3>
                             <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition"><X className="w-6 h-6 text-slate-400" /></button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-10 space-y-6">
+                        <form onSubmit={handleSubmit} className="p-4 sm:p-10 space-y-6 overflow-y-auto">
                             {activeTab === 'users' && (
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="col-span-2">
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Full Name</label>
-                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Email</label>
-                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="email" value={formData.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} required />
+                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="email" value={formData.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} required />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Password {editingItem && '(Optional)'}</label>
-                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="password" value={formData.password || ''} onChange={e => setFormData({ ...formData, password: e.target.value })} {...(!editingItem && { required: true })} />
+                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="password" value={formData.password || ''} onChange={e => setFormData({ ...formData, password: e.target.value })} {...(!editingItem && { required: true })} />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">RFID Tag</label>
-                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.rfid || ''} onChange={e => setFormData({ ...formData, rfid: e.target.value })} required />
+                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.rfid || ''} onChange={e => setFormData({ ...formData, rfid: e.target.value })} required />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Role</label>
-                                        <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.role || 'STUDENT'} onChange={e => setFormData({ ...formData, role: e.target.value })}>
+                                        <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.role || 'STUDENT'} onChange={e => setFormData({ ...formData, role: e.target.value })}>
                                             <option value="STUDENT">Student</option>
                                             <option value="FACULTY">Faculty</option>
                                             <option value="ADMIN">Admin</option>
@@ -703,11 +707,11 @@ const AdminDashboard = () => {
                                             <>
                                                 <div>
                                                     <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Registration No</label>
-                                                    <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.regNumber || ''} onChange={e => setFormData({ ...formData, regNumber: e.target.value })} required />
+                                                    <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.regNumber || ''} onChange={e => setFormData({ ...formData, regNumber: e.target.value })} required />
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Department</label>
-                                                    <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.department || ''} onChange={e => setFormData({ ...formData, department: e.target.value })} required />
+                                                    <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.department || ''} onChange={e => setFormData({ ...formData, department: e.target.value })} required />
                                                 </div>
                                             </>
                                         )}
@@ -715,11 +719,11 @@ const AdminDashboard = () => {
                                             <>
                                                 <div>
                                                     <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Employee ID</label>
-                                                    <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.employeeId || ''} onChange={e => setFormData({ ...formData, employeeId: e.target.value })} required />
+                                                    <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.employeeId || ''} onChange={e => setFormData({ ...formData, employeeId: e.target.value })} required />
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Department</label>
-                                                    <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.department || ''} onChange={e => setFormData({ ...formData, department: e.target.value })} required />
+                                                    <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.department || ''} onChange={e => setFormData({ ...formData, department: e.target.value })} required />
                                                 </div>
                                             </>
                                         )}
@@ -731,22 +735,22 @@ const AdminDashboard = () => {
                                 <div className="space-y-6">
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Slot Name</label>
-                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" placeholder="e.g., Morning A" value={formData.slotName || ''} onChange={e => setFormData({ ...formData, slotName: e.target.value })} required />
+                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" placeholder="e.g., Morning A" value={formData.slotName || ''} onChange={e => setFormData({ ...formData, slotName: e.target.value })} required />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Day of Week</label>
-                                        <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.dayOfWeek || 'MON'} onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}>
+                                        <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.dayOfWeek || 'MON'} onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}>
                                             {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(day => <option key={day} value={day}>{day}</option>)}
                                         </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
                                             <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Start Time</label>
-                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="time" value={formData.startTime || ''} onChange={e => setFormData({ ...formData, startTime: e.target.value })} required />
+                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="time" value={formData.startTime || ''} onChange={e => setFormData({ ...formData, startTime: e.target.value })} required />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-slate-600 mb-2 px-1">End Time</label>
-                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="time" value={formData.endTime || ''} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required />
+                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" type="time" value={formData.endTime || ''} onChange={e => setFormData({ ...formData, endTime: e.target.value })} required />
                                         </div>
                                     </div>
                                 </div>
@@ -756,11 +760,11 @@ const AdminDashboard = () => {
                                 <div className="grid grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Block</label>
-                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" placeholder="e.g., Block A" value={formData.block || ''} onChange={e => setFormData({ ...formData, block: e.target.value })} required />
+                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" placeholder="e.g., Block A" value={formData.block || ''} onChange={e => setFormData({ ...formData, block: e.target.value })} required />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Room</label>
-                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" placeholder="e.g., 101" value={formData.room || ''} onChange={e => setFormData({ ...formData, room: e.target.value })} required />
+                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" placeholder="e.g., 101" value={formData.room || ''} onChange={e => setFormData({ ...formData, room: e.target.value })} required />
                                     </div>
                                 </div>
                             )}
@@ -769,15 +773,15 @@ const AdminDashboard = () => {
                                 <div className="space-y-6">
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Device Identifier (UID)</label>
-                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" placeholder="READER_001" value={formData.deviceIdentifier || ''} onChange={e => setFormData({ ...formData, deviceIdentifier: e.target.value })} required />
+                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" placeholder="READER_001" value={formData.deviceIdentifier || ''} onChange={e => setFormData({ ...formData, deviceIdentifier: e.target.value })} required />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Venue (ID)</label>
-                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" placeholder="1" value={formData.roomId || ''} onChange={e => setFormData({ ...formData, roomId: e.target.value })} required />
+                                        <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" placeholder="1" value={formData.roomId || ''} onChange={e => setFormData({ ...formData, roomId: e.target.value })} required />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Status</label>
-                                        <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.status || 'ACTIVE'} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+                                        <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.status || 'ACTIVE'} onChange={e => setFormData({ ...formData, status: e.target.value })}>
                                             <option value="ACTIVE">Active</option>
                                             <option value="INACTIVE">Inactive</option>
                                         </select>
@@ -787,11 +791,11 @@ const AdminDashboard = () => {
 
                             {activeTab === 'classes' && (
                                 <div className="space-y-6">
-                                    <div className="grid grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
                                         <div>
                                             <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Select Course</label>
                                             <select
-                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
                                                 value={formData.courseId || ''}
                                                 onChange={e => setFormData({ ...formData, courseId: e.target.value })}
                                                 required
@@ -803,7 +807,7 @@ const AdminDashboard = () => {
                                         <div>
                                             <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Select Venue</label>
                                             <select
-                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
                                                 value={formData.venueId || ''}
                                                 onChange={e => setFormData({ ...formData, venueId: e.target.value })}
                                                 required
@@ -818,7 +822,7 @@ const AdminDashboard = () => {
                                         <div>
                                             <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Select Faculty</label>
                                             <select
-                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
                                                 value={formData.facultyId || ''}
                                                 onChange={e => setFormData({ ...formData, facultyId: e.target.value })}
                                                 required
@@ -830,7 +834,7 @@ const AdminDashboard = () => {
                                         <div>
                                             <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Class Status</label>
                                             <select
-                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
                                                 value={formData.status || 'ONGOING'}
                                                 onChange={e => setFormData({ ...formData, status: e.target.value })}
                                                 required
@@ -846,7 +850,7 @@ const AdminDashboard = () => {
                                             <span>Enroll Students</span>
                                             <span className="text-indigo-600 font-bold text-[10px] uppercase tracking-wider">{(formData.studentIds || []).length} Selected</span>
                                         </label>
-                                        <div className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden max-h-60 overflow-y-auto divide-y divide-slate-100">
+                                        <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto divide-y divide-slate-100">
                                             {allStudents.map(s => (
                                                 <div
                                                     key={s.id}
@@ -881,17 +885,17 @@ const AdminDashboard = () => {
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
                                             <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Course Name</label>
-                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.courseName || ''} onChange={e => setFormData({ ...formData, courseName: e.target.value })} required placeholder="e.g. Computer Networks" />
+                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.courseName || ''} onChange={e => setFormData({ ...formData, courseName: e.target.value })} required placeholder="e.g. Computer Networks" />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-slate-600 mb-2 px-1">Course Code</label>
-                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.courseCode || ''} onChange={e => setFormData({ ...formData, courseCode: e.target.value })} required placeholder="e.g. CS101" />
+                                            <input className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition" value={formData.courseCode || ''} onChange={e => setFormData({ ...formData, courseCode: e.target.value })} required placeholder="e.g. CS101" />
                                         </div>
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Time Slots</label>
-                                        <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-2xl border border-slate-200">
+                                        <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-lg border border-slate-200">
                                             {allSlots.map(s => (
                                                 <div
                                                     key={s.id}
@@ -914,8 +918,8 @@ const AdminDashboard = () => {
                             )}
 
                             <div className="pt-8 border-t border-slate-100 flex gap-4">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black rounded-2xl transition">Cancel</button>
-                                <button type="submit" disabled={processing} className={`flex-[2] px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 transition flex items-center justify-center gap-2 ${processing ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black rounded-lg transition">Cancel</button>
+                                <button type="submit" disabled={processing} className={`flex-[2] px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-lg shadow-xl shadow-indigo-100 transition flex items-center justify-center gap-2 ${processing ? 'opacity-70 cursor-not-allowed' : ''}`}>
                                     {processing && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
                                     {editingItem ? 'Save Changes' : `Create ${activeTab.slice(0, -1)}`}
                                 </button>

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { domToPng } from 'modern-screenshot';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { LayoutDashboard, BookOpen, Users, LogOut, X, Plus, Calendar, Settings, Clock, Check, Trash2, MapPin, User, ChevronRight, Edit2, Search, Download } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, LogOut, X, Plus, Calendar, Settings, Clock, Check, Trash2, MapPin, User, ChevronRight, Edit2, Search, Download, Menu } from 'lucide-react';
 
 const FacultyDashboard = () => {
     const [user, setUser] = useState(null);
@@ -23,6 +24,7 @@ const FacultyDashboard = () => {
     const [sessionRecords, setSessionRecords] = useState([]);
     const [classStats, setClassStats] = useState(null);
     const [attendanceLoading, setAttendanceLoading] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const navigate = useNavigate();
 
@@ -242,6 +244,24 @@ const FacultyDashboard = () => {
         }
     };
 
+    const downloadTimetable = async () => {
+        const element = document.getElementById('timetable-container');
+        if (!element) return;
+        try {
+            const dataUrl = await domToPng(element, { 
+                backgroundColor: '#f8fafc',
+                scale: 2,
+                quality: 1
+            });
+            const link = document.createElement('a');
+            link.download = 'faculty_timetable.png';
+            link.href = dataUrl;
+            link.click();
+        } catch (err) {
+            console.error('Failed to download timetable', err);
+        }
+    };
+
     const renderTimetable = () => {
         const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
         
@@ -257,8 +277,13 @@ const FacultyDashboard = () => {
         );
 
         return (
-            <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div className="space-y-6">
+                <div className="flex justify-end px-2">
+                    <button onClick={downloadTimetable} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition shadow-lg shadow-indigo-200">
+                        Download Image
+                    </button>
+                </div>
+                <div id="timetable-container" className="grid grid-cols-1 md:grid-cols-6 gap-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">
                     {days.map(day => (
                         <div key={day} className="space-y-4">
                             <div className="bg-indigo-600 text-white p-4 rounded-2xl text-center font-black shadow-lg shadow-indigo-100 uppercase tracking-widest text-xs">
@@ -316,12 +341,12 @@ const FacultyDashboard = () => {
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-                <div className="flex justify-between items-center mb-8">
-                    <h4 className="text-xl font-black text-slate-800">My Classes</h4>
-                    <button
-                        onClick={openCreate}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition shadow-lg shadow-indigo-100"
-                    >
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
+                    <div>
+                        <h4 className="text-3xl lg:text-4xl font-black text-slate-800 tracking-tight">Assigned Classes</h4>
+                        <p className="text-slate-500 font-medium">Manage your active semesters and take attendance.</p>
+                    </div>
+                    <button onClick={() => { setEditingItem(null); setFormData({ studentIds: [] }); setIsModalOpen(true); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 transition shadow-xl shadow-indigo-100 shrink-0">
                         <Plus className="w-5 h-5" />
                         Create New Class
                     </button>
@@ -486,22 +511,22 @@ const FacultyDashboard = () => {
     );
 
     const renderSessions = () => (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-            <div className="flex items-center justify-between mb-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 lg:p-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
                 <div>
                     <h4 className="text-2xl font-black text-slate-800">Attendance Sessions</h4>
                     <p className="text-slate-500 font-medium">History for {selectedClass?.course?.courseName}</p>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
                     <button 
                         onClick={downloadAttendanceReport} 
                         disabled={processing}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-black text-sm shadow-lg shadow-emerald-100 flex items-center gap-2 transition"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 lg:px-6 py-3 rounded-2xl font-black text-sm shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 transition"
                     >
                         <Download className="w-5 h-5" />
-                        Download Report (.csv)
+                        Download (.csv)
                     </button>
-                    <button onClick={() => setActiveTab('dashboard')} className="text-indigo-600 font-bold hover:underline flex items-center gap-2">
+                    <button onClick={() => setActiveTab('dashboard')} className="text-indigo-600 font-bold hover:underline flex items-center justify-center gap-2">
                         ← Back to Classes
                     </button>
                 </div>
@@ -576,53 +601,43 @@ const FacultyDashboard = () => {
     );
 
     const renderSessionRecords = () => (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-            <div className="flex items-center justify-between mb-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 lg:p-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
                 <div>
                     <h4 className="text-2xl font-black text-slate-800">Session Attendance</h4>
                     <p className="text-slate-500 font-medium">{new Date(selectedSession?.date).toLocaleDateString()} • {selectedSession?.class?.course?.courseName}</p>
                 </div>
-                <button onClick={() => fetchSessions(selectedSession?.classId)} className="text-indigo-600 font-bold hover:underline flex items-center gap-2">
+                <button onClick={() => fetchSessions(selectedSession?.classId)} className="text-indigo-600 font-bold hover:underline flex items-center justify-center gap-2">
                     ← Back to Sessions
                 </button>
             </div>
 
             <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-slate-100 border-b border-slate-200">
-                        <tr>
-                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Student Name</th>
-                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Reg Number</th>
-                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">Action</th>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
+                    <thead>
+                        <tr className="border-b border-indigo-50">
+                            <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student Info</th>
+                            <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
-                        {sessionRecords.map(s => (
-                            <tr key={s.userId} className="hover:bg-white transition-colors">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase">
-                                            {s.name?.charAt(0)}
+                    <tbody className="divide-y divide-slate-50">
+                        {sessionRecords.sort((a, b) => a.student.user.name.localeCompare(b.student.user.name)).map(s => (
+                            <tr key={s.id} className="group hover:bg-slate-50/50 transition duration-300">
+                                <td className="px-8 py-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold group-hover:scale-110 transition">
+                                            {s.student.user.name.charAt(0)}
                                         </div>
-                                        <span className="font-bold text-slate-800">{s.name}</span>
+                                        <div>
+                                            <p className="font-bold text-slate-800">{s.student.user.name}</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.student.regNumber}</p>
+                                        </div>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-sm font-medium text-slate-600">{s.regNumber}</td>
-                                <td className="px-6 py-4">
-                                    {s.present ? (
-                                        <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase flex w-fit items-center gap-1">
-                                            <Check className="w-3 h-3" /> Present
-                                        </span>
-                                    ) : (
-                                        <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-[10px] font-black uppercase flex w-fit items-center gap-1">
-                                            <X className="w-3 h-3" /> Absent
-                                        </span>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 text-right">
+                                <td className="px-8 py-6 text-right">
                                     <button
-                                        onClick={() => toggleAttendanceManual(s)}
+                                        onClick={() => toggleAttendance(s.id, s.present)}
                                         disabled={processing}
                                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition shadow-sm ${s.present
                                                 ? 'bg-white border border-red-200 text-red-600 hover:bg-red-50'
@@ -638,12 +653,13 @@ const FacultyDashboard = () => {
                 </table>
             </div>
         </div>
-    );
+    </div>
+);
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
-            {/* Sidebar */}
-            <div className="w-72 bg-indigo-950 text-white flex flex-col shrink-0 sticky top-0 h-screen shadow-2xl overflow-hidden">
+        <div className="h-screen w-full bg-slate-50 flex overflow-hidden">
+            {/* Sidebar Desktop */}
+            <div className={`fixed inset-y-0 left-0 lg:relative transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 w-72 bg-indigo-950 text-white flex flex-col shrink-0 h-full shadow-2xl transition duration-300 z-50 overflow-hidden`}>
                 <div className="p-8 border-b border-white/5">
                     <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
                         <div className="bg-white/10 p-2 rounded-xl">
@@ -654,7 +670,7 @@ const FacultyDashboard = () => {
                     <p className="text-indigo-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 ml-12">Faculty</p>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-2 mt-8">
+                <nav className="flex-1 px-4 space-y-2 mt-8 overflow-y-auto scrollbar-hide">
                     {[
                         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
                         { id: 'timetable', label: 'Timetable', icon: Calendar },
@@ -662,7 +678,10 @@ const FacultyDashboard = () => {
                     ].map(item => (
                         <button
                             key={item.id}
-                            onClick={() => setActiveTab(item.id)}
+                            onClick={() => {
+                                setActiveTab(item.id);
+                                setIsSidebarOpen(false);
+                            }}
                             className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold transition-all duration-300 ${activeTab === item.id
                                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40 translate-x-2'
                                 : 'text-indigo-300/60 hover:bg-white/5 hover:text-indigo-200'
@@ -673,38 +692,44 @@ const FacultyDashboard = () => {
                         </button>
                     ))}
                 </nav>
-
-                <div className="p-6 border-t border-white/5">
-                    <div className="bg-white/5 p-4 rounded-2xl mb-4 border border-white/5">
-                        <p className="text-[10px] text-indigo-400 font-bold uppercase mb-1">Logged in as</p>
-                        <p className="text-sm font-bold truncate">{user.name}</p>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 px-6 py-4 w-full hover:bg-red-500/10 text-red-300 rounded-2xl font-bold transition"
-                    >
-                        <LogOut className="w-5 h-5" />
-                        Sign Out
-                    </button>
-                </div>
             </div>
 
+            {/* Backdrop for mobile */}
+            {isSidebarOpen && (
+                <div onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"></div>
+            )}
+
             {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-auto">
-                <header className="h-24 bg-white/50 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-12 sticky top-0 z-10">
-                    <h3 className="text-2xl font-black text-slate-800 capitalize tracking-tight">{activeTab}</h3>
+            <div className="flex-1 h-full flex flex-col min-w-0 overflow-y-auto">
+                <header className="h-20 lg:h-24 bg-white/50 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 lg:px-12 sticky top-0 z-30 w-full shrink-0">
                     <div className="flex items-center gap-4">
-                        <div className="text-right">
-                            <p className="text-sm font-black text-slate-900">{user.name}</p>
-                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{user.faculty?.department}</p>
-                        </div>
-                        <div className="w-12 h-12 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-100 flex items-center justify-center text-white font-black text-lg">
+                        <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 text-indigo-600 hover:bg-slate-100 rounded-xl transition">
+                            <Menu className="w-6 h-6" />
+                        </button>
+                        <h3 className="text-xl lg:text-2xl font-black text-slate-800 capitalize tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] lg:max-w-none">{activeTab}</h3>
+                    </div>
+                    <div className="flex items-center gap-3 lg:gap-4 bg-white p-1.5 lg:p-2 pr-3 lg:pr-4 rounded-2xl border border-slate-200 shadow-sm max-w-[200px] lg:max-w-none overflow-hidden text-ellipsis">
+                        <div className="w-12 h-12 bg-indigo-600 rounded-xl shadow-md flex items-center justify-center text-white font-black text-lg">
                             {user.name?.charAt(0)}
+                        </div>
+                        <div className="text-left px-2">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Signed in as</p>
+                            <p className="text-sm font-black text-slate-800">{user.name}</p>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider truncate max-w-[120px]">{user.faculty?.department}</p>
+                        </div>
+                        <div className="pl-4 border-l border-slate-100 ml-2">
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center justify-center p-3 text-red-500 hover:bg-red-50 rounded-xl transition group"
+                                title="Sign Out"
+                            >
+                                <LogOut className="w-5 h-5" />
+                            </button>
                         </div>
                     </div>
                 </header>
 
-                <main className="p-12 max-w-7xl mx-auto w-full">
+                <main className="p-4 lg:p-12 max-w-7xl mx-auto w-full">
                     {activeTab === 'dashboard' && renderDashboard()}
                     {activeTab === 'timetable' && renderTimetable()}
                     {activeTab === 'courses_slots' && renderCoursesSlots()}
@@ -716,18 +741,18 @@ const FacultyDashboard = () => {
             {/* Create/Edit Class Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-300">
-                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-300">
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                             <h3 className="text-2xl font-black text-slate-800">{editingItem ? 'Edit Class' : 'Create New Class'}</h3>
                             <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition"><X className="w-6 h-6 text-slate-400" /></button>
                         </div>
 
-                        <form onSubmit={handleCreateOrUpdateClass} className="p-10 space-y-8">
-                            <div className="grid grid-cols-2 gap-8">
+                        <form onSubmit={handleCreateOrUpdateClass} className="p-4 lg:p-10 space-y-8 overflow-y-auto">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
                                 <div>
                                     <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Course</label>
                                     <select
-                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
                                         value={formData.courseId || ''}
                                         onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
                                         required
@@ -739,7 +764,7 @@ const FacultyDashboard = () => {
                                 <div>
                                     <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Class Status</label>
                                     <select
-                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
                                         value={formData.status || 'ONGOING'}
                                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                                         required
@@ -753,7 +778,7 @@ const FacultyDashboard = () => {
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Venue</label>
                                 <select
-                                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-lg focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
                                     value={formData.venueId || ''}
                                     onChange={(e) => setFormData({ ...formData, venueId: e.target.value })}
                                     required
@@ -768,7 +793,7 @@ const FacultyDashboard = () => {
                                     <span>Select Students</span>
                                     <span className="text-indigo-600 italic font-medium">{formData.studentIds.length} Selected</span>
                                 </label>
-                                <div className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden">
+                                <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
                                     <div className="max-h-60 overflow-y-auto divide-y divide-slate-200">
                                         {students.map(s => (
                                             <div
@@ -795,8 +820,8 @@ const FacultyDashboard = () => {
                             </div>
 
                             <div className="flex gap-4 pt-4">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-8 py-5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black rounded-[20px] transition">Cancel</button>
-                                <button type="submit" disabled={processing} className={`flex-[2] px-8 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-[20px] shadow-2xl shadow-indigo-100 transition-all flex items-center justify-center gap-2 ${processing ? 'opacity-70 cursor-not-allowed text-indigo-100' : 'active:scale-95'}`}>
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-8 py-5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black rounded-lg transition">Cancel</button>
+                                <button type="submit" disabled={processing} className={`flex-[2] px-8 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-lg shadow-2xl shadow-indigo-100 transition-all flex items-center justify-center gap-2 ${processing ? 'opacity-70 cursor-not-allowed text-indigo-100' : 'active:scale-95'}`}>
                                     {processing && <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
                                     {processing ? 'Processing...' : editingItem ? 'Update Class' : 'Create Class Instance'}
                                 </button>
