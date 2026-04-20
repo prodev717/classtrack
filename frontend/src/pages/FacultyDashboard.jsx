@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { 
-    User, 
-    LogOut, 
-    LayoutDashboard, 
-    Calendar, 
-    Users, 
-    Settings, 
-    Plus, 
-    BookOpen, 
-    MapPin, 
+import {
+    User,
+    LogOut,
+    LayoutDashboard,
+    Calendar,
+    Users,
+    Settings,
+    Plus,
+    BookOpen,
+    MapPin,
     X,
     Check,
     Search,
@@ -30,6 +30,14 @@ const FacultyDashboard = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [formData, setFormData] = useState({ studentIds: [] });
+    
+    // Attendance states
+    const [selectedClass, setSelectedClass] = useState(null);
+    const [selectedSession, setSelectedSession] = useState(null);
+    const [sessions, setSessions] = useState([]);
+    const [sessionRecords, setSessionRecords] = useState([]);
+    const [attendanceLoading, setAttendanceLoading] = useState(false);
+    
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -156,6 +164,56 @@ const FacultyDashboard = () => {
         }
     };
 
+    // --- ATTENDANCE ACTIONS ---
+
+    const fetchSessions = async (classId) => {
+        setAttendanceLoading(true);
+        setActiveTab('sessions');
+        try {
+            const res = await api.get(`/attendance/classes/${classId}/sessions`);
+            setSessions(res.data.data);
+            const cls = classes.find(c => c.id === classId);
+            setSelectedClass(cls);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setAttendanceLoading(false);
+        }
+    };
+
+    const fetchSessionRecords = async (sessionId) => {
+        setAttendanceLoading(true);
+        setActiveTab('session_records');
+        try {
+            const res = await api.get(`/attendance/sessions/${sessionId}/records`);
+            setSessionRecords(res.data.data);
+            setSelectedSession(res.data.session);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setAttendanceLoading(false);
+        }
+    };
+
+    const toggleAttendanceManual = async (student) => {
+        setProcessing(true);
+        try {
+            if (student.present) {
+                await api.delete(`/attendance/records/${student.recordId}`);
+            } else {
+                await api.post('/attendance/records', {
+                    sessionId: selectedSession.id,
+                    userId: student.userId
+                });
+            }
+            fetchSessionRecords(selectedSession.id);
+        } catch (err) {
+            alert(err.response?.data?.error || 'Failed to update attendance');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
     if (!user) return null;
 
     const renderDashboard = () => (
@@ -193,7 +251,7 @@ const FacultyDashboard = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
                 <div className="flex justify-between items-center mb-8">
                     <h4 className="text-xl font-black text-slate-800">My Classes</h4>
-                    <button 
+                    <button
                         onClick={openCreate}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition shadow-lg shadow-indigo-100"
                     >
@@ -218,7 +276,7 @@ const FacultyDashboard = () => {
                                 <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition duration-1000">
                                     <BookOpen className="w-32 h-32" />
                                 </div>
-                                
+
                                 <div className="relative z-10 flex flex-col h-full">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="bg-white p-3 rounded-2xl shadow-sm">
@@ -268,9 +326,14 @@ const FacultyDashboard = () => {
                                             <span className="font-bold text-slate-700">{c.students?.length} Students</span>
                                         </div>
                                         <div className="flex items-center gap-4">
-                                            <button className="text-indigo-600 font-black text-sm hover:underline">View Attendance →</button>
+                                            <button 
+                                                onClick={() => fetchSessions(c.id)}
+                                                className="text-indigo-600 font-black text-sm hover:underline"
+                                            >
+                                                View Attendance →
+                                            </button>
                                             {c.status === 'ONGOING' && (
-                                                <button 
+                                                <button
                                                     onClick={() => handleEndClass(c.id)}
                                                     className="bg-slate-200 hover:bg-red-100 text-slate-600 hover:text-red-700 px-3 py-1 rounded-lg text-[10px] font-black transition-colors"
                                                 >
@@ -354,7 +417,120 @@ const FacultyDashboard = () => {
             </div>
         </div>
     );
-    
+
+    const renderSessions = () => (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+            <div className="flex items-center justify-between mb-8">
+                <div>
+                    <h4 className="text-2xl font-black text-slate-800">Attendance Sessions</h4>
+                    <p className="text-slate-500 font-medium">History for {selectedClass?.course?.courseName}</p>
+                </div>
+                <button onClick={() => setActiveTab('dashboard')} className="text-indigo-600 font-bold hover:underline flex items-center gap-2">
+                    ← Back to Classes
+                </button>
+            </div>
+
+            {attendanceLoading ? (
+                <div className="flex justify-center py-20">
+                    <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            ) : sessions.length === 0 ? (
+                <div className="py-20 text-center text-slate-400 italic">No attendance sessions recorded yet for this class.</div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {sessions.map(s => (
+                        <div key={s.id} onClick={() => fetchSessionRecords(s.id)} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 cursor-pointer hover:border-indigo-300 transition group">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="bg-white p-2 rounded-xl shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition">
+                                    <Calendar className="w-5 h-5" />
+                                </div>
+                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${
+                                    s.status === 'OPEN' ? 'bg-green-100 text-green-700' : 
+                                    s.status === 'AUTO_CLOSED' ? 'bg-amber-100 text-amber-700' : 
+                                    'bg-slate-200 text-slate-600'
+                                }`}>
+                                    {s.status}
+                                </span>
+                            </div>
+                            <h5 className="font-bold text-slate-800">{new Date(s.date).toLocaleDateString()}</h5>
+                            <p className="text-xs text-slate-500 mb-4">{formatTime(s.startTime)} - {s.endTime ? formatTime(s.endTime) : '---'}</p>
+                            <div className="bg-white rounded-xl p-3 border border-slate-200 flex justify-between items-center text-sm">
+                                <span className="font-bold text-slate-600">Present</span>
+                                <span className="font-black text-indigo-600">{s._count?.records || 0} Students</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+
+    const renderSessionRecords = () => (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+            <div className="flex items-center justify-between mb-8">
+                <div>
+                    <h4 className="text-2xl font-black text-slate-800">Session Attendance</h4>
+                    <p className="text-slate-500 font-medium">{new Date(selectedSession?.date).toLocaleDateString()} • {selectedSession?.class?.course?.courseName}</p>
+                </div>
+                <button onClick={() => fetchSessions(selectedSession?.classId)} className="text-indigo-600 font-bold hover:underline flex items-center gap-2">
+                    ← Back to Sessions
+                </button>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-left">
+                    <thead className="bg-slate-100 border-b border-slate-200">
+                        <tr>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Student Name</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Reg Number</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                        {sessionRecords.map(s => (
+                            <tr key={s.userId} className="hover:bg-white transition-colors">
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase">
+                                            {s.name?.charAt(0)}
+                                        </div>
+                                        <span className="font-bold text-slate-800">{s.name}</span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-sm font-medium text-slate-600">{s.regNumber}</td>
+                                <td className="px-6 py-4">
+                                    {s.present ? (
+                                        <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase flex w-fit items-center gap-1">
+                                            <Check className="w-3 h-3" /> Present
+                                        </span>
+                                    ) : (
+                                        <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-[10px] font-black uppercase flex w-fit items-center gap-1">
+                                            <X className="w-3 h-3" /> Absent
+                                        </span>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button 
+                                        onClick={() => toggleAttendanceManual(s)}
+                                        disabled={processing}
+                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition shadow-sm ${
+                                            s.present 
+                                            ? 'bg-white border border-red-200 text-red-600 hover:bg-red-50' 
+                                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                        }`}
+                                    >
+                                        {s.present ? 'Mark Absent' : 'Mark Present'}
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-slate-50 flex">
             {/* Sidebar */}
@@ -368,7 +544,7 @@ const FacultyDashboard = () => {
                     </h2>
                     <p className="text-indigo-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 ml-12">Faculty</p>
                 </div>
-                
+
                 <nav className="flex-1 px-4 space-y-2 mt-8">
                     {[
                         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -377,14 +553,13 @@ const FacultyDashboard = () => {
                         { id: 'students_list', label: 'My Students', icon: Users },
                         { id: 'settings', label: 'Settings', icon: Settings },
                     ].map(item => (
-                        <button 
+                        <button
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
-                            className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold transition-all duration-300 ${
-                                activeTab === item.id 
-                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40 translate-x-2' 
+                            className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl font-bold transition-all duration-300 ${activeTab === item.id
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40 translate-x-2'
                                 : 'text-indigo-300/60 hover:bg-white/5 hover:text-indigo-200'
-                            }`}
+                                }`}
                         >
                             <item.icon className="w-5 h-5" />
                             {item.label}
@@ -397,7 +572,7 @@ const FacultyDashboard = () => {
                         <p className="text-[10px] text-indigo-400 font-bold uppercase mb-1">Logged in as</p>
                         <p className="text-sm font-bold truncate">{user.name}</p>
                     </div>
-                    <button 
+                    <button
                         onClick={handleLogout}
                         className="flex items-center gap-3 px-6 py-4 w-full hover:bg-red-500/10 text-red-300 rounded-2xl font-bold transition"
                     >
@@ -425,9 +600,11 @@ const FacultyDashboard = () => {
                 <main className="p-12 max-w-7xl mx-auto w-full">
                     {activeTab === 'dashboard' && renderDashboard()}
                     {activeTab === 'courses_slots' && renderCoursesSlots()}
-                    {activeTab !== 'dashboard' && activeTab !== 'courses_slots' && (
+                    {activeTab === 'sessions' && renderSessions()}
+                    {activeTab === 'session_records' && renderSessionRecords()}
+                    {activeTab !== 'dashboard' && activeTab !== 'courses_slots' && activeTab !== 'sessions' && activeTab !== 'session_records' && (
                         <div className="bg-white rounded-3xl p-20 flex flex-col items-center justify-center text-slate-300 italic border border-slate-100">
-                             Feature coming soon...
+                            Feature coming soon...
                         </div>
                     )}
                 </main>
@@ -441,38 +618,38 @@ const FacultyDashboard = () => {
                             <h3 className="text-2xl font-black text-slate-800">{editingItem ? 'Edit Class' : 'Create New Class'}</h3>
                             <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition"><X className="w-6 h-6 text-slate-400" /></button>
                         </div>
-                        
+
                         <form onSubmit={handleCreateOrUpdateClass} className="p-10 space-y-8">
                             <div className="grid grid-cols-2 gap-8">
                                 <div>
-                                     <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Course</label>
-                                     <select 
-                                         className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
-                                         value={formData.courseId || ''}
-                                         onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
-                                         required
-                                     >
-                                         <option value="">Choose a course</option>
-                                         {courses.map(c => <option key={c.id} value={c.id}>{c.courseName} ({c.courseCode})</option>)}
-                                     </select>
-                                 </div>
+                                    <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Course</label>
+                                    <select
+                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                        value={formData.courseId || ''}
+                                        onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
+                                        required
+                                    >
+                                        <option value="">Choose a course</option>
+                                        {courses.map(c => <option key={c.id} value={c.id}>{c.courseName} ({c.courseCode})</option>)}
+                                    </select>
+                                </div>
                                 <div>
-                                     <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Class Status</label>
-                                     <select 
-                                         className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
-                                         value={formData.status || 'ONGOING'}
-                                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                         required
-                                     >
-                                         <option value="ONGOING">Ongoing</option>
-                                         <option value="COMPLETED">Completed</option>
-                                     </select>
+                                    <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Class Status</label>
+                                    <select
+                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
+                                        value={formData.status || 'ONGOING'}
+                                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                        required
+                                    >
+                                        <option value="ONGOING">Ongoing</option>
+                                        <option value="COMPLETED">Completed</option>
+                                    </select>
                                 </div>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-3 px-1">Select Venue</label>
-                                <select 
+                                <select
                                     className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition"
                                     value={formData.venueId || ''}
                                     onChange={(e) => setFormData({ ...formData, venueId: e.target.value })}
@@ -491,8 +668,8 @@ const FacultyDashboard = () => {
                                 <div className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden">
                                     <div className="max-h-60 overflow-y-auto divide-y divide-slate-200">
                                         {students.map(s => (
-                                            <div 
-                                                key={s.userId} 
+                                            <div
+                                                key={s.userId}
                                                 onClick={() => toggleStudent(s.userId)}
                                                 className={`p-4 flex items-center justify-between cursor-pointer hover:bg-white transition ${formData.studentIds.includes(s.userId) ? 'bg-indigo-50 hover:bg-indigo-50' : ''}`}
                                             >

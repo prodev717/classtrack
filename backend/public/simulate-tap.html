@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID Tap Simulator - ClassTrack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">RFID Tap Simulator</h1>
+        
+        <form id="tapForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Device ID (Reader Identifier)</label>
+                <input type="text" id="deviceId" required 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="e.g. READER_001">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">RFID Tag / Card ID</label>
+                <input type="text" id="rfid" required 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="e.g. CARD_123">
+            </div>
+
+            <div class="pt-2 border-t border-gray-100">
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="useSimulatedTime" class="sr-only peer">
+                    <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <span class="ms-3 text-sm font-medium text-gray-700">Use Simulated Time</span>
+                </label>
+            </div>
+
+            <div id="simulatedTimeContainer" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Select simulated Date & Time</label>
+                <input type="datetime-local" id="simulatedTime" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+            </div>
+
+            <button type="submit" 
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors shadow-md active:scale-[0.98]">
+                TAP CARD
+            </button>
+        </form>
+
+        <div id="result" class="mt-6 hidden">
+            <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Result</h2>
+            <div id="resultContent" class="p-4 rounded-lg text-sm font-mono break-all overflow-auto max-h-60">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('tapForm');
+        const useSimTime = document.getElementById('useSimulatedTime');
+        const simTimeContainer = document.getElementById('simulatedTimeContainer');
+        const result = document.getElementById('result');
+        const resultContent = document.getElementById('resultContent');
+
+        useSimTime.addEventListener('change', (e) => {
+            simTimeContainer.classList.toggle('hidden', !e.target.checked);
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                deviceId: document.getElementById('deviceId').value,
+                rfid: document.getElementById('rfid').value,
+            };
+
+            if (useSimTime.checked) {
+                payload.simulatedTime = document.getElementById('simulatedTime').value;
+            }
+
+            result.classList.remove('hidden');
+            resultContent.innerHTML = '<span class="text-gray-400">Processing...</span>';
+            resultContent.className = 'p-4 rounded-lg text-sm font-mono bg-gray-50 border border-gray-200';
+
+            try {
+                const response = await fetch('/api/attendance/tap', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultContent.className = 'p-4 rounded-lg text-sm font-mono bg-green-50 border border-green-200 text-green-800';
+                    resultContent.innerHTML = `<strong>SUCCESS:</strong><br>${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultContent.className = 'p-4 rounded-lg text-sm font-mono bg-red-50 border border-red-200 text-red-800';
+                    resultContent.innerHTML = `<strong>ERROR:</strong><br>${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (err) {
+                resultContent.className = 'p-4 rounded-lg text-sm font-mono bg-red-50 border border-red-200 text-red-800';
+                resultContent.innerHTML = `<strong>FETCH ERROR:</strong><br>${err.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

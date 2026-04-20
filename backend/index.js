@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import facultyRoutes from './routes/faculty.js';
 import studentRoutes from './routes/student.js';
+import attendanceRoutes from './routes/attendance.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -19,28 +20,33 @@ app.use(express.json());
 
 // Request logging middleware
 app.use((req, res, next) => {
-    const start = Date.now();
-    res.on('finish', () => {
-        const duration = Date.now() - start;
-        console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms)`);
-    });
-    next();
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms)`);
+  });
+  next();
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+app.get('/simulate', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'simulate-tap.html'));
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'API is running' });
+  res.json({
+    status: 'ok',
+    message: 'API is running',
+    simulation_url: '/simulate'
+  });
 });
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/faculty', facultyRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 const PORT = process.env.PORT || 5000;
 

@@ -16,7 +16,10 @@ import {
 const StudentDashboard = () => {
     const [user, setUser] = useState(null);
     const [enrolledClasses, setEnrolledClasses] = useState([]);
+    const [attendanceRecords, setAttendanceRecords] = useState([]);
+    const [activeTab, setActiveTab] = useState('courses');
     const [loading, setLoading] = useState(true);
+    const [recordsLoading, setRecordsLoading] = useState(false);
     const navigate = useNavigate();
 
     const formatTime = (dateStr) => {
@@ -41,6 +44,7 @@ const StudentDashboard = () => {
     useEffect(() => {
         if (user) {
             fetchEnrolledClasses();
+            fetchAttendance();
         }
     }, [user]);
 
@@ -53,6 +57,18 @@ const StudentDashboard = () => {
             console.error('Failed to fetch classes', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchAttendance = async () => {
+        setRecordsLoading(true);
+        try {
+            const res = await api.get(`/attendance/my-records?userId=${user.id}`);
+            setAttendanceRecords(res.data.data);
+        } catch (err) {
+            console.error('Failed to fetch attendance', err);
+        } finally {
+            setRecordsLoading(false);
         }
     };
 
@@ -136,9 +152,26 @@ const StudentDashboard = () => {
                     </div>
                 </div>
 
-                {/* Classes Section */}
-                <div className="space-y-6">
-                    <h3 className="text-2xl font-black text-slate-800 px-2 tracking-tight">My Enrolled Classes</h3>
+                {/* Navigation Tabs */}
+                <div className="flex gap-4 border-b border-slate-200">
+                    <button 
+                        onClick={() => setActiveTab('courses')}
+                        className={`px-6 py-4 font-black transition-all border-b-4 ${activeTab === 'courses' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        My Courses
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('attendance')}
+                        className={`px-6 py-4 font-black transition-all border-b-4 ${activeTab === 'attendance' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Attendance History
+                    </button>
+                </div>
+
+                {/* Content Section */}
+                {activeTab === 'courses' ? (
+                    <div className="space-y-6">
+                        <h3 className="text-2xl font-black text-slate-800 px-2 tracking-tight">My Enrolled Classes</h3>
                     
                     {loading ? (
                         <div className="flex justify-center py-20">
@@ -207,6 +240,67 @@ const StudentDashboard = () => {
                         </div>
                     )}
                 </div>
+                ) : (
+                    <div className="space-y-6">
+                        <h3 className="text-2xl font-black text-slate-800 px-2 tracking-tight">Attendance Log</h3>
+                        
+                        {recordsLoading ? (
+                            <div className="flex justify-center py-20">
+                                <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                        ) : attendanceRecords.length === 0 ? (
+                            <div className="bg-white rounded-[32px] p-24 border border-slate-100 flex flex-col items-center justify-center text-slate-300 italic">
+                                <CheckCircle className="w-16 h-16 mb-4 opacity-10" />
+                                <p>No attendance records found.</p>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50 border-b border-slate-100">
+                                        <tr>
+                                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Course</th>
+                                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date & Time</th>
+                                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Faculty</th>
+                                            <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {attendanceRecords.map(record => (
+                                            <tr key={record.id} className="hover:bg-indigo-50/30 transition-colors">
+                                                <td className="px-8 py-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600">
+                                                            <BookOpen className="w-4 h-4" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-slate-800">{record.session?.class?.course?.courseName}</p>
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase">{record.session?.class?.course?.courseCode}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <p className="font-bold text-slate-700">{new Date(record.timestamp).toLocaleDateString()}</p>
+                                                    <p className="text-xs text-slate-500 font-medium">{new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <div className="flex items-center gap-2">
+                                                        <User className="w-4 h-4 text-slate-300" />
+                                                        <span className="text-sm font-bold text-slate-600">Prof. {record.session?.class?.faculty?.user?.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6 text-right">
+                                                    <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase">
+                                                        Present
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
             </main>
 
             <footer className="text-center py-12 text-slate-400 text-xs font-bold uppercase tracking-[0.3em]">

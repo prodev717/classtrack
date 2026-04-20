@@ -81,7 +81,8 @@ const AdminDashboard = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await api.get(`/admin/${activeTab}`);
+            const url = activeTab.startsWith('attendance') ? `/${activeTab}` : `/admin/${activeTab}`;
+            const res = await api.get(url);
             setData(res.data.data);
         } catch (err) {
             console.error(err);
@@ -99,7 +100,8 @@ const AdminDashboard = () => {
         if (!window.confirm('Are you sure you want to delete this item?')) return;
         setProcessing(true);
         try {
-            await api.delete(`/admin/${activeTab}/${id}`);
+            const url = activeTab.startsWith('attendance') ? `/${activeTab}/${id}` : `/admin/${activeTab}/${id}`;
+            await api.delete(url);
             fetchData();
         } catch (err) {
             alert(err.response?.data?.error || 'Delete failed');
@@ -393,6 +395,72 @@ const AdminDashboard = () => {
         </div>
     );
 
+    const renderAdminAttendance = () => (
+        <div className="space-y-6">
+            <div className="bg-slate-50 border border-slate-200 rounded-3xl overflow-hidden">
+                <table className="w-full text-left">
+                    <thead className="bg-slate-100 border-b border-slate-200">
+                        <tr>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Class / Course</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Faculty</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Date & Time</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Status</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Records</th>
+                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {data.map(s => (
+                            <tr key={s.id} className="hover:bg-white transition">
+                                <td className="px-6 py-4">
+                                    <p className="font-bold text-slate-800">{s.class?.course?.courseName}</p>
+                                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-tight">{s.class?.course?.courseCode}</p>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold">
+                                            {s.class?.faculty?.user?.name?.charAt(0)}
+                                        </div>
+                                        <span className="text-sm font-medium text-slate-600">{s.class?.faculty?.user?.name}</span>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <p className="text-sm font-bold text-slate-700">{new Date(s.date).toLocaleDateString()}</p>
+                                    <p className="text-xs text-slate-500">{new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
+                                        s.status === 'OPEN' ? 'bg-green-100 text-green-700' : 
+                                        s.status === 'AUTO_CLOSED' ? 'bg-amber-100 text-amber-700' : 
+                                        'bg-slate-200 text-slate-600'
+                                    }`}>
+                                        {s.status}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                    <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-xs font-black">
+                                        {s._count?.records || 0}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                    <button 
+                                        onClick={() => handleDelete(s.id)}
+                                        className="p-2 hover:bg-red-50 text-red-600 rounded-xl transition"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center italic">
+                Note: Individual attendance records can be managed by faculty from their dashboard or via API.
+            </p>
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-slate-50 flex">
             {/* Sidebar */}
@@ -416,7 +484,8 @@ const AdminDashboard = () => {
                         { id: 'courses', label: 'Courses', icon: BookOpen },
                         { id: 'slots', label: 'Time Slots', icon: Calendar },
                         { id: 'venues', label: 'Venues', icon: MapPin },
-                        { id: 'readers', label: 'RFID Readers', icon: Cpu }
+                        { id: 'readers', label: 'RFID Readers', icon: Cpu },
+                        { id: 'attendance/sessions', label: 'Attendance', icon: Check }
                     ].map((tab) => (
                         <button
                             key={tab.id}
@@ -451,16 +520,20 @@ const AdminDashboard = () => {
             <main className="flex-1 p-12 max-w-7xl mx-auto w-full">
                 <header className="flex justify-between items-end mb-12">
                     <div>
-                        <h2 className="text-4xl font-black text-slate-800 capitalize tracking-tight">{activeTab} Management</h2>
-                        <p className="text-slate-500 mt-2 font-medium">Control and manage system {activeTab} across the infrastructure.</p>
+                        <h2 className="text-4xl font-black text-slate-800 capitalize tracking-tight">
+                            {activeTab.includes('/') ? activeTab.split('/')[1] : activeTab} Management
+                        </h2>
+                        <p className="text-slate-500 mt-2 font-medium">Control and manage system {activeTab.includes('/') ? activeTab.split('/')[1] : activeTab} across the infrastructure.</p>
                     </div>
-                    <button
-                        onClick={() => { setEditingItem(null); setFormData({ role: 'STUDENT' }); setIsModalOpen(true); }}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-indigo-200 flex items-center gap-3 transition-all active:scale-95"
-                    >
-                        <Plus className="w-6 h-6" />
-                        Add New {activeTab.slice(0, -1)}
-                    </button>
+                    {activeTab !== 'attendance/sessions' && (
+                        <button
+                            onClick={() => { setEditingItem(null); setFormData({ role: 'STUDENT' }); setIsModalOpen(true); }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-black shadow-xl shadow-indigo-200 flex items-center gap-3 transition-all active:scale-95"
+                        >
+                            <Plus className="w-6 h-6" />
+                            Add New {activeTab.slice(0, -1)}
+                        </button>
+                    )}
                 </header>
 
                 <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden min-h-[600px] p-8">
@@ -476,6 +549,7 @@ const AdminDashboard = () => {
                             {activeTab === 'slots' && renderSlots()}
                             {activeTab === 'venues' && renderVenues()}
                             {activeTab === 'readers' && renderReaders()}
+                            {activeTab === 'attendance/sessions' && renderAdminAttendance()}
                         </>
                     )}
                 </div>

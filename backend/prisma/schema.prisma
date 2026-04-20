@@ -24,6 +24,8 @@ model User {
   student StudentProfile?
   faculty FacultyProfile?
   admin   AdminProfile?
+
+  attendanceRecords AttendanceRecord[]
 }
 
 model StudentProfile {
@@ -31,8 +33,8 @@ model StudentProfile {
   regNumber  String @unique
   department String
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  classes Class[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes           Class[]
 }
 
 model FacultyProfile {
@@ -98,6 +100,8 @@ model RFIDReader {
 
   venue Venue @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
+  attendanceRecords AttendanceRecord[]
+
   @@index([roomId])
 }
 
@@ -121,11 +125,51 @@ model Class {
   course   Course           @relation(fields: [courseId], references: [id])
   students StudentProfile[]
 
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
   status    ClassStatus @default(ONGOING)
+
+  attendanceSessions AttendanceSession[]
 }
 
 enum ClassStatus {
   ONGOING
   COMPLETED
+}
+
+enum AttendanceSessionStatus {
+  OPEN
+  CLOSED
+  AUTO_CLOSED
+}
+
+model AttendanceSession {
+  id        Int                     @id @default(autoincrement())
+  classId   Int
+  date      DateTime
+  startTime DateTime
+  endTime   DateTime
+  status    AttendanceSessionStatus @default(OPEN)
+
+  class   Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  records AttendanceRecord[]
+
+  createdAt DateTime @default(now())
+
+  @@index([classId])
+}
+
+model AttendanceRecord {
+  id        Int      @id @default(autoincrement())
+  sessionId Int
+  userId    Int
+  timestamp DateTime @default(now())
+  readerId  Int?
+
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reader  RFIDReader?       @relation(fields: [readerId], references: [id], onDelete: SetNull)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
 }
