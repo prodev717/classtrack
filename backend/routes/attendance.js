@@ -116,6 +116,7 @@ async function getCurrentContext(deviceId, facultyId = null, simulatedTime = nul
 router.post('/tap', async (req, res) => {
     try {
         const { deviceId, rfid, simulatedTime } = req.body;
+        const now = simulatedTime ? new Date(simulatedTime) : new Date();
 
         if (!deviceId || !rfid) {
             return res.status(400).json({ error: 'deviceId and rfid are required' });
@@ -141,8 +142,25 @@ router.post('/tap', async (req, res) => {
         const { classInstance, slot } = context;
 
         if (user.role === 'FACULTY') {
+            // Cooldown check: 15 seconds to prevent double punch errors
+            const lastSession = await prisma.attendanceSession.findFirst({
+                where: { classId: classInstance.id },
+                orderBy: { id: 'desc' }
+            });
+
+            if (lastSession) {
+                const lastActionTime = lastSession.status === 'OPEN' ? lastSession.startTime : lastSession.endTime;
+                const diff = now.getTime() - new Date(lastActionTime).getTime();
+                if (diff < 15000) {
+                    return res.status(429).json({ 
+                        error: 'Cooldown active. Please wait 15 seconds between taps.',
+                        remainingSeconds: Math.ceil((15000 - diff) / 1000)
+                    });
+                }
+            }
+
             // Logic for Faculty: Open/Close session
-            const info = getInstitutionTime(simulatedTime ? new Date(simulatedTime) : new Date());
+            const info = getInstitutionTime(now);
             const dateStr = `${info.year}-${info.month}-${info.day}`;
             
             // Define current day range in UTC that encompasses the institution's day
@@ -163,7 +181,7 @@ router.post('/tap', async (req, res) => {
                     where: { id: activeSession.id },
                     data: {
                         status: 'CLOSED',
-                        endTime: simulatedTime ? new Date(simulatedTime) : new Date()
+                        endTime: now
                     }
                 });
                 return res.json({ 
@@ -177,7 +195,7 @@ router.post('/tap', async (req, res) => {
                     data: {
                         classId: classInstance.id,
                         date: new Date(`${dateStr}T00:00:00Z`), // Local business date
-                        startTime: simulatedTime ? new Date(simulatedTime) : new Date(),
+                        startTime: now,
                         endTime: slot.endTime, // Store wall-clock end time for comparison
                         status: 'OPEN'
                     }
@@ -205,14 +223,14 @@ router.post('/tap', async (req, res) => {
             }
 
             // check if session is expired
-            const normalizedNow = normalizeTime(simulatedTime ? new Date(simulatedTime) : new Date());
+            const normalizedNow = normalizeTime(now);
             if (normalizedNow > slot.endTime) {
                 // Auto close it
                 await prisma.attendanceSession.update({
                     where: { id: openSession.id },
                     data: { 
                         status: 'AUTO_CLOSED', 
-                        endTime: simulatedTime ? new Date(simulatedTime) : new Date() 
+                        endTime: now 
                     }
                 });
                 return res.status(400).json({ error: 'Attendance session has expired and was auto-closed' });
