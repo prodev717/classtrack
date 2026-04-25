@@ -446,7 +446,7 @@ const FacultyDashboard = () => {
     const formatTime = (dateStr) => {
         if (!dateStr) return '';
         const d = new Date(dateStr);
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
     };
 
     const renderCoursesSlots = () => (
@@ -622,22 +622,22 @@ const FacultyDashboard = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                        {sessionRecords.sort((a, b) => a.student.user.name.localeCompare(b.student.user.name)).map(s => (
-                            <tr key={s.id} className="group hover:bg-slate-50/50 transition duration-300">
+                        {sessionRecords.sort((a, b) => a.name.localeCompare(b.name)).map(s => (
+                            <tr key={s.userId} className="group hover:bg-slate-50/50 transition duration-300">
                                 <td className="px-8 py-6">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold group-hover:scale-110 transition">
-                                            {s.student.user.name.charAt(0)}
+                                            {s.name.charAt(0)}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-slate-800">{s.student.user.name}</p>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.student.regNumber}</p>
+                                            <p className="font-bold text-slate-800">{s.name}</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.regNumber}</p>
                                         </div>
                                     </div>
                                 </td>
                                 <td className="px-8 py-6 text-right">
                                     <button
-                                        onClick={() => toggleAttendance(s.id, s.present)}
+                                        onClick={() => toggleAttendanceManual(s)}
                                         disabled={processing}
                                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition shadow-sm ${s.present
                                                 ? 'bg-white border border-red-200 text-red-600 hover:bg-red-50'
@@ -707,6 +707,16 @@ const FacultyDashboard = () => {
                             <Menu className="w-6 h-6" />
                         </button>
                         <h3 className="text-xl lg:text-2xl font-black text-slate-800 capitalize tracking-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] lg:max-w-none">{activeTab}</h3>
+                        
+                        {activeTab === 'dashboard' && (
+                            <button 
+                                onClick={openCreate}
+                                className="ml-2 lg:ml-6 bg-indigo-600 hover:bg-indigo-700 text-white px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl lg:rounded-2xl shadow-xl shadow-indigo-100 transition flex items-center gap-2 group active:scale-95"
+                            >
+                                <Plus className="w-4 h-4 lg:w-5 lg:h-5 group-hover:rotate-90 transition-transform duration-300" />
+                                <span className="text-xs lg:text-sm font-black uppercase tracking-widest">Create</span>
+                            </button>
+                        )}
                     </div>
                     <div className="flex items-center gap-3 lg:gap-4 bg-white p-1.5 lg:p-2 pr-3 lg:pr-4 rounded-2xl border border-slate-200 shadow-sm max-w-[200px] lg:max-w-none overflow-hidden text-ellipsis">
                         <div className="w-12 h-12 bg-indigo-600 rounded-xl shadow-md flex items-center justify-center text-white font-black text-lg">

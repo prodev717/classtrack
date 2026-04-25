@@ -161,7 +161,7 @@ const AdminDashboard = () => {
         } else if (activeTab === 'slots') {
             const formatTime = (isoStr) => {
                 const date = new Date(isoStr);
-                return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
             };
             setFormData({
                 slotName: item.slotName,
@@ -219,7 +219,7 @@ const AdminDashboard = () => {
                             </td>
                             <td className="px-6 py-4">
                                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' :
-                                        u.role === 'FACULTY' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+                                    u.role === 'FACULTY' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
                                     }`}>
                                     {u.role}
                                 </span>
@@ -258,7 +258,7 @@ const AdminDashboard = () => {
                     <div className="mt-4 flex items-center gap-2 text-slate-500 text-sm">
                         <span className="bg-slate-100 px-2 py-1 rounded font-bold text-slate-700">{s.dayOfWeek}</span>
                         <span>
-                            {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })} - {new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                            {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC' })} - {new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC' })}
                         </span>
                     </div>
                 </div>
@@ -370,7 +370,7 @@ const AdminDashboard = () => {
                                     <div key={slot.id} className="bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
                                         <span className="text-[9px] font-black text-indigo-600 uppercase leading-none">{slot.dayOfWeek}</span>
                                         <span className="text-[10px] font-bold text-slate-400">
-                                            {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}
                                         </span>
                                     </div>
                                 ))}
@@ -440,11 +440,10 @@ const AdminDashboard = () => {
                                     <p className="text-xs text-slate-500">{new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                 </td>
                                 <td className="px-6 py-4 text-center">
-                                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
-                                        s.status === 'OPEN' ? 'bg-green-100 text-green-700' : 
-                                        s.status === 'AUTO_CLOSED' ? 'bg-amber-100 text-amber-700' : 
-                                        'bg-slate-200 text-slate-600'
-                                    }`}>
+                                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${s.status === 'OPEN' ? 'bg-green-100 text-green-700' :
+                                            s.status === 'AUTO_CLOSED' ? 'bg-amber-100 text-amber-700' :
+                                                'bg-slate-200 text-slate-600'
+                                        }`}>
                                         {s.status}
                                     </span>
                                 </td>
@@ -454,7 +453,7 @@ const AdminDashboard = () => {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button 
+                                    <button
                                         onClick={() => handleDelete(s.id)}
                                         className="p-2 hover:bg-red-50 text-red-600 rounded-xl transition"
                                     >
@@ -508,7 +507,7 @@ const AdminDashboard = () => {
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Below 75% threshold</span>
                         </div>
                     </div>
-                    
+
                     <div className="bg-white rounded-[40px] border border-slate-100 overflow-hidden shadow-sm">
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 border-b border-slate-100">
@@ -548,8 +547,8 @@ const AdminDashboard = () => {
                                         <td className="px-10 py-8 text-right w-80">
                                             <div className="flex flex-col items-end gap-2">
                                                 <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                                                    <div 
-                                                        className={`h-full transition-all duration-1000 ${cls.avgAttendance < 75 ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'bg-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.4)]'}`} 
+                                                    <div
+                                                        className={`h-full transition-all duration-1000 ${cls.avgAttendance < 75 ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'bg-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.4)]'}`}
                                                         style={{ width: `${cls.avgAttendance}%` }}
                                                     ></div>
                                                 </div>
@@ -584,6 +583,7 @@ const AdminDashboard = () => {
                     {[
                         { id: 'users', label: 'Users', icon: Users },
                         { id: 'courses', label: 'Courses', icon: BookOpen },
+                        { id: 'slots', label: 'Time Slots', icon: Calendar },
                         { id: 'venues', label: 'Venues', icon: MapPin },
                         { id: 'readers', label: 'IoT Readers', icon: Cpu },
                         { id: 'classes', label: 'Classes', icon: Calendar },
@@ -621,6 +621,16 @@ const AdminDashboard = () => {
                             <Menu className="w-6 h-6" />
                         </button>
                         <h3 className="text-xl lg:text-2xl font-black text-slate-800 capitalize tracking-tight">{activeTab.includes('/') ? activeTab.split('/')[1] : activeTab}</h3>
+
+                        {!['reports', 'attendance/sessions'].includes(activeTab) && (
+                            <button
+                                onClick={() => { setEditingItem(null); setFormData({}); setIsModalOpen(true); }}
+                                className="ml-2 lg:ml-6 bg-indigo-600 hover:bg-indigo-700 text-white px-3 lg:px-5 py-2 lg:py-2.5 rounded-xl lg:rounded-2xl shadow-xl shadow-indigo-100 transition flex items-center gap-2 group active:scale-95"
+                            >
+                                <Plus className="w-4 h-4 lg:w-5 lg:h-5 group-hover:rotate-90 transition-transform duration-300" />
+                                <span className="text-xs lg:text-sm font-black uppercase tracking-widest">Create</span>
+                            </button>
+                        )}
                     </div>
                     <div className="flex items-center gap-4 bg-white p-2 pr-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                         <div className="w-12 h-12 bg-indigo-600 rounded-xl shadow-md flex items-center justify-center text-white font-black text-lg shrink-0">
@@ -901,8 +911,8 @@ const AdminDashboard = () => {
                                                     key={s.id}
                                                     onClick={() => toggleSlot(s.id)}
                                                     className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${(formData.slotIds || []).includes(s.id)
-                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg'
-                                                            : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'
+                                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg'
+                                                        : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300'
                                                         }`}
                                                 >
                                                     <div className="flex flex-col">

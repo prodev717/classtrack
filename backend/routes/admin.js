@@ -198,8 +198,8 @@ router.post('/slots', async (req, res) => {
             data: {
                 slotName,
                 dayOfWeek,
-                startTime: new Date(`${baseDate}${startTime}:00`),
-                endTime: new Date(`${baseDate}${endTime}:00`)
+                startTime: new Date(`${baseDate}${startTime}:00Z`),
+                endTime: new Date(`${baseDate}${endTime}:00Z`)
             }
         });
         res.json({ data: slot });
@@ -220,8 +220,8 @@ router.put('/slots/:id', async (req, res) => {
             data: {
                 slotName,
                 dayOfWeek,
-                startTime: new Date(`${baseDate}${startTime}${startTime.includes(':') && startTime.split(':').length === 2 ? ':00' : ''}`),
-                endTime: new Date(`${baseDate}${endTime}${endTime.includes(':') && endTime.split(':').length === 2 ? ':00' : ''}`)
+                startTime: new Date(`${baseDate}${startTime}${startTime.includes(':') && startTime.split(':').length === 2 ? ':00' : ''}Z`),
+                endTime: new Date(`${baseDate}${endTime}${endTime.includes(':') && endTime.split(':').length === 2 ? ':00' : ''}Z`)
             }
         });
         res.json({ data: slot });

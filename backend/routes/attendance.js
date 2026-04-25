@@ -4,15 +4,50 @@ import { authenticate, authorizeFaculty, authorizeStudent, authorizeAdmin } from
 
 const router = express.Router();
 
-const DAY_MAP = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const DEFAULT_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Kolkata';
+
+// Helper to get time components in the institution's timezone
+function getInstitutionTime(date, timeZone = DEFAULT_TIMEZONE) {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        weekday: 'short',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour12: false
+    });
+    
+    const parts = formatter.formatToParts(date);
+    const map = {};
+    parts.forEach(p => map[p.type] = p.value);
+    
+    const dayMap = {
+        'Sun': 'SUN', 'Mon': 'MON', 'Tue': 'TUE', 'Wed': 'WED', 'Thu': 'THU', 'Fri': 'FRI', 'Sat': 'SAT'
+    };
+    
+    return {
+        dayOfWeek: dayMap[map.weekday],
+        hours: parseInt(map.hour),
+        minutes: parseInt(map.minute),
+        seconds: parseInt(map.second),
+        year: map.year,
+        month: map.month,
+        day: map.day
+    };
+}
 
 // Helper to normalize time to 2000-01-01 for comparison with Slot times
+// It produces a UTC date where the time components match the wall-clock time in the target timezone
 function normalizeTime(date) {
-    const d = new Date(date);
-    const normalized = new Date("2000-01-01T00:00:00");
-    normalized.setHours(d.getHours());
-    normalized.setMinutes(d.getMinutes());
-    normalized.setSeconds(d.getSeconds());
+    const info = getInstitutionTime(date);
+    const normalized = new Date("2000-01-01T00:00:00Z");
+    normalized.setUTCHours(info.hours);
+    normalized.setUTCMinutes(info.minutes);
+    normalized.setUTCSeconds(info.seconds);
+    normalized.setUTCMilliseconds(0);
     return normalized;
 }
 
@@ -21,7 +56,8 @@ function normalizeTime(date) {
  */
 async function getCurrentContext(deviceId, facultyId = null, simulatedTime = null) {
     const now = simulatedTime ? new Date(simulatedTime) : new Date();
-    const currentDay = DAY_MAP[now.getDay()];
+    const info = getInstitutionTime(now);
+    const currentDay = info.dayOfWeek;
     const normalizedNow = normalizeTime(now);
 
     // 1. Find reader and venue
@@ -106,17 +142,18 @@ router.post('/tap', async (req, res) => {
 
         if (user.role === 'FACULTY') {
             // Logic for Faculty: Open/Close session
-            const currentDayStart = simulatedTime ? new Date(new Date(simulatedTime).setHours(0,0,0,0)) : new Date(new Date().setHours(0, 0, 0, 0));
-            const currentDayEnd = simulatedTime ? new Date(new Date(simulatedTime).setHours(23,59,59,999)) : new Date(new Date().setHours(23, 59, 59, 999));
+            const info = getInstitutionTime(simulatedTime ? new Date(simulatedTime) : new Date());
+            const dateStr = `${info.year}-${info.month}-${info.day}`;
+            
+            // Define current day range in UTC that encompasses the institution's day
+            const currentDayStart = new Date(`${dateStr}T00:00:00Z`);
+            const currentDayEnd = new Date(`${dateStr}T23:59:59Z`);
             
             const activeSession = await prisma.attendanceSession.findFirst({
                 where: {
                     classId: classInstance.id,
                     status: 'OPEN',
-                    date: {
-                        gte: currentDayStart,
-                        lte: currentDayEnd
-                    }
+                    date: new Date(`${dateStr}T00:00:00Z`)
                 }
             });
 
@@ -139,9 +176,9 @@ router.post('/tap', async (req, res) => {
                 const newSession = await prisma.attendanceSession.create({
                     data: {
                         classId: classInstance.id,
-                        date: simulatedTime ? new Date(simulatedTime) : new Date(),
+                        date: new Date(`${dateStr}T00:00:00Z`), // Local business date
                         startTime: simulatedTime ? new Date(simulatedTime) : new Date(),
-                        endTime: new Date(slot.endTime), // Potential auto-close target
+                        endTime: slot.endTime, // Store wall-clock end time for comparison
                         status: 'OPEN'
                     }
                 });
@@ -168,8 +205,8 @@ router.post('/tap', async (req, res) => {
             }
 
             // check if session is expired
-            const now = normalizeTime(simulatedTime ? new Date(simulatedTime) : new Date());
-            if (now > normalizeTime(slot.endTime)) {
+            const normalizedNow = normalizeTime(simulatedTime ? new Date(simulatedTime) : new Date());
+            if (normalizedNow > slot.endTime) {
                 // Auto close it
                 await prisma.attendanceSession.update({
                     where: { id: openSession.id },
@@ -232,11 +269,12 @@ router.post('/auto-close', async (req, res) => {
         let closedCount = 0;
         for (const session of openSessions) {
             // Find the slot for this session
-            // Since a class can have multiple slots, we need to find the one matching today
-            const currentDay = DAY_MAP[new Date().getDay()];
+            const info = getInstitutionTime(new Date());
+            const currentDay = info.dayOfWeek;
             const slot = session.class.course.slots.find(s => s.dayOfWeek === currentDay);
 
-            if (slot && now > normalizeTime(slot.endTime)) {
+            const normalizedNow = normalizeTime(new Date());
+            if (slot && normalizedNow > slot.endTime) {
                 await prisma.attendanceSession.update({
                     where: { id: session.id },
                     data: { status: 'AUTO_CLOSED', endTime: new Date() }
