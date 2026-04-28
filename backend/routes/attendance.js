@@ -19,15 +19,15 @@ function getInstitutionTime(date, timeZone = DEFAULT_TIMEZONE) {
         day: '2-digit',
         hour12: false
     });
-    
+
     const parts = formatter.formatToParts(date);
     const map = {};
     parts.forEach(p => map[p.type] = p.value);
-    
+
     const dayMap = {
         'Sun': 'SUN', 'Mon': 'MON', 'Tue': 'TUE', 'Wed': 'WED', 'Thu': 'THU', 'Fri': 'FRI', 'Sat': 'SAT'
     };
-    
+
     return {
         dayOfWeek: dayMap[map.weekday],
         hours: parseInt(map.hour),
@@ -132,17 +132,102 @@ router.post('/tap', async (req, res) => {
             return res.status(404).json({ error: 'User not recognized' });
         }
 
-        // 2. Determine Context
-        const context = await getCurrentContext(deviceId, user.role === 'FACULTY' ? user.id : null, simulatedTime);
-
-        if (!context) {
-            return res.status(404).json({ error: 'No active class found for this device at this time' });
+        // 2. Identify Reader/Venue
+        const reader = await prisma.rFIDReader.findUnique({
+            where: { deviceIdentifier: deviceId },
+            include: { venue: true }
+        });
+        if (!reader) {
+            return res.status(404).json({ error: 'Device not found' });
         }
 
-        const { classInstance, slot } = context;
+        // 3. Find any currently OPEN session at this venue
+        let activeSession = await prisma.attendanceSession.findFirst({
+            where: {
+                status: 'OPEN',
+                class: { venueId: reader.roomId }
+            },
+            include: {
+                class: {
+                    include: {
+                        course: { include: { slots: true } },
+                        faculty: { include: { user: true } }
+                    }
+                }
+            }
+        });
 
+        // 4. Handle expired session (Auto-close)
+        if (activeSession) {
+            const info = getInstitutionTime(now);
+            const slot = activeSession.class.course.slots.find(s => s.dayOfWeek === info.dayOfWeek);
+            const normalizedNow = normalizeTime(now);
+
+            if (slot && normalizedNow > slot.endTime) {
+                // Auto-close it
+                const autoClosedSession = await prisma.attendanceSession.update({
+                    where: { id: activeSession.id },
+                    data: {
+                        status: 'AUTO_CLOSED',
+                        endTime: now
+                    }
+                });
+
+                // If the faculty member who owns the session is tapping, treat it as a close event
+                if (user.role === 'FACULTY' && activeSession.class.facultyId === user.id) {
+                    return res.json({
+                        message: 'Attendance session expired and was auto-closed',
+                        type: 'FACULTY_CLOSE',
+                        session: autoClosedSession
+                    });
+                }
+
+                // Otherwise, proceed as if no active session (it's now closed)
+                activeSession = null;
+            }
+        }
+
+        // 5. Role-based Logic
         if (user.role === 'FACULTY') {
-            // Cooldown check: 15 seconds to prevent double punch errors
+            // If this faculty has an active session, close it
+            if (activeSession && activeSession.class.facultyId === user.id) {
+                // Cooldown check: 15 seconds since opening
+                const diff = now.getTime() - new Date(activeSession.startTime).getTime();
+                if (diff < 10000) {
+                    return res.status(429).json({
+                        error: 'Cooldown active. Please wait 15 seconds between taps.',
+                        remainingSeconds: Math.ceil((15000 - diff) / 1000)
+                    });
+                }
+
+                const closedSession = await prisma.attendanceSession.update({
+                    where: { id: activeSession.id },
+                    data: {
+                        status: 'CLOSED',
+                        endTime: now
+                    }
+                });
+                return res.json({
+                    message: 'Attendance session closed',
+                    type: 'FACULTY_CLOSE',
+                    session: closedSession
+                });
+            }
+
+            // If another faculty has a session open, prevent starting a new one
+            if (activeSession) {
+                return res.status(400).json({ error: 'Another faculty member has an open session in this venue' });
+            }
+
+            // Try to open a new session: Find current context for this faculty
+            const context = await getCurrentContext(deviceId, user.id, simulatedTime);
+            if (!context) {
+                return res.status(404).json({ error: 'No active class found for you at this device at this time' });
+            }
+
+            const { classInstance, slot } = context;
+
+            // Cooldown check for opening (against last session of this class)
             const lastSession = await prisma.attendanceSession.findFirst({
                 where: { classId: classInstance.id },
                 orderBy: { id: 'desc' }
@@ -152,110 +237,99 @@ router.post('/tap', async (req, res) => {
                 const lastActionTime = lastSession.status === 'OPEN' ? lastSession.startTime : lastSession.endTime;
                 const diff = now.getTime() - new Date(lastActionTime).getTime();
                 if (diff < 15000) {
-                    return res.status(429).json({ 
+                    return res.status(429).json({
                         error: 'Cooldown active. Please wait 15 seconds between taps.',
                         remainingSeconds: Math.ceil((15000 - diff) / 1000)
                     });
                 }
             }
 
-            // Logic for Faculty: Open/Close session
             const info = getInstitutionTime(now);
             const dateStr = `${info.year}-${info.month}-${info.day}`;
-            
-            // Define current day range in UTC that encompasses the institution's day
-            const currentDayStart = new Date(`${dateStr}T00:00:00Z`);
-            const currentDayEnd = new Date(`${dateStr}T23:59:59Z`);
-            
-            const activeSession = await prisma.attendanceSession.findFirst({
+            const targetDate = new Date(`${dateStr}T00:00:00Z`);
+
+            // Check if a session already exists for this class and date
+            const existingSession = await prisma.attendanceSession.findFirst({
                 where: {
                     classId: classInstance.id,
-                    status: 'OPEN',
-                    date: new Date(`${dateStr}T00:00:00Z`)
+                    date: targetDate
                 }
             });
 
-            if (activeSession) {
-                // Close existing session
-                const closedSession = await prisma.attendanceSession.update({
-                    where: { id: activeSession.id },
+            if (existingSession) {
+                // Resume the existing session instead of creating a new one
+                const resumedSession = await prisma.attendanceSession.update({
+                    where: { id: existingSession.id },
                     data: {
-                        status: 'CLOSED',
-                        endTime: now
+                        status: 'OPEN',
+                        endTime: slot.endTime // Update endTime to current slot's end
                     }
                 });
-                return res.json({ 
-                    message: 'Attendance session closed', 
-                    type: 'FACULTY_CLOSE', 
-                    session: closedSession 
-                });
-            } else {
-                // Open new session
-                const newSession = await prisma.attendanceSession.create({
-                    data: {
-                        classId: classInstance.id,
-                        date: new Date(`${dateStr}T00:00:00Z`), // Local business date
-                        startTime: now,
-                        endTime: slot.endTime, // Store wall-clock end time for comparison
-                        status: 'OPEN'
-                    }
-                });
-                return res.json({ 
-                    message: 'Attendance session opened', 
-                    type: 'FACULTY_OPEN', 
-                    session: newSession 
+                return res.json({
+                    message: 'Attendance session resumed',
+                    type: 'FACULTY_OPEN',
+                    session: resumedSession
                 });
             }
-        } else if (user.role === 'STUDENT') {
-            // Logic for Student: Record attendance
-            // Find an open session for THIS class
-            const openSession = await prisma.attendanceSession.findFirst({
-                where: {
+
+            const newSession = await prisma.attendanceSession.create({
+                data: {
                     classId: classInstance.id,
+                    date: targetDate,
+                    startTime: now,
+                    endTime: slot.endTime,
                     status: 'OPEN'
                 }
             });
+            return res.json({
+                message: 'Attendance session opened',
+                type: 'FACULTY_OPEN',
+                session: newSession
+            });
 
-            if (!openSession) {
-                // Check if session needs auto-close (time exceeded)
-                // But if no session is open, we can't record.
-                return res.status(400).json({ error: 'No open attendance session for this class' });
-            }
-
-            // check if session is expired
-            const normalizedNow = normalizeTime(now);
-            if (normalizedNow > slot.endTime) {
-                // Auto close it
-                await prisma.attendanceSession.update({
-                    where: { id: openSession.id },
-                    data: { 
-                        status: 'AUTO_CLOSED', 
-                        endTime: now 
+        } else if (user.role === 'STUDENT') {
+            if (activeSession) {
+                // Check if student is enrolled in this class
+                const enrollment = await prisma.class.findFirst({
+                    where: {
+                        id: activeSession.classId,
+                        students: { some: { userId: user.id } }
                     }
                 });
-                return res.status(400).json({ error: 'Attendance session has expired and was auto-closed' });
-            }
 
-            // Record attendance
-            try {
-                const record = await prisma.attendanceRecord.create({
-                    data: {
-                        sessionId: openSession.id,
-                        userId: user.id,
-                        readerId: context.reader.id
-                    }
-                });
-                return res.json({ 
-                    message: 'Attendance recorded', 
-                    type: 'STUDENT_TAP', 
-                    record: record,
-                    userName: user.name 
-                });
-            } catch (err) {
-                if (err.code === 'P2002') {
-                    return res.status(400).json({ error: 'Attendance already recorded for this session' });
+                if (!enrollment) {
+                    return res.status(403).json({ error: 'You are not enrolled in the current active class' });
                 }
-                throw err;
+
+                // Record attendance
+                try {
+                    const record = await prisma.attendanceRecord.create({
+                        data: {
+                            sessionId: activeSession.id,
+                            userId: user.id,
+                            readerId: reader.id
+                        }
+                    });
+                    return res.json({
+                        message: 'Attendance recorded',
+                        type: 'STUDENT_TAP',
+                        record: record,
+                        userName: user.name
+                    });
+                } catch (err) {
+                    if (err.code === 'P2002') {
+                        return res.status(400).json({ error: 'Attendance already recorded for this session' });
+                    }
+                    throw err;
+                }
+            } else {
+                // No active session. Check if a class *should* be happening to give a better error message.
+                const context = await getCurrentContext(deviceId, null, simulatedTime);
+                if (context) {
+                    return res.status(400).json({ error: 'Attendance session not yet opened by faculty' });
+                } else {
+                    return res.status(404).json({ error: 'No active class found for this device at this time' });
+                }
             }
         } else {
             return res.status(403).json({ error: 'Unauthorized role' });
@@ -271,7 +345,7 @@ router.post('/tap', async (req, res) => {
 router.post('/auto-close', async (req, res) => {
     try {
         const now = normalizeTime(new Date());
-        
+
         // Find all open sessions
         const openSessions = await prisma.attendanceSession.findMany({
             where: { status: 'OPEN' },
@@ -391,7 +465,7 @@ router.get('/classes/:classId/sessions', async (req, res) => {
 router.get('/sessions/:sessionId/records', async (req, res) => {
     try {
         const { sessionId } = req.params;
-        
+
         const session = await prisma.attendanceSession.findUnique({
             where: { id: parseInt(sessionId) },
             include: {
@@ -438,7 +512,7 @@ router.get('/my-records', async (req, res) => {
         // const userId = req.user.id;
         // For now, I'll allow passing userId in query for simulation if needed, 
         // but real production would use req.user.id.
-        const userId = req.query.userId; 
+        const userId = req.query.userId;
         if (!userId) return res.status(400).json({ error: 'userId is required' });
 
         const records = await prisma.attendanceRecord.findMany({
@@ -538,7 +612,7 @@ router.delete('/sessions/:id', async (req, res) => {
 router.get('/student/stats', authenticate, authorizeStudent, async (req, res) => {
     try {
         const userId = req.user.id;
-        
+
         // Find all classes the student is enrolled in
         const enrolledClasses = await prisma.class.findMany({
             where: { students: { some: { userId } } },
@@ -556,7 +630,7 @@ router.get('/student/stats', authenticate, authorizeStudent, async (req, res) =>
             const totalSessions = c.attendanceSessions.length;
             const attendedSessions = c.attendanceSessions.filter(s => s.records.length > 0).length;
             const percentage = totalSessions > 0 ? (attendedSessions / totalSessions) * 100 : 0;
-            
+
             return {
                 classId: c.id,
                 courseName: c.course.courseName,
@@ -621,8 +695,8 @@ router.get('/faculty/class/:classId/stats', authenticate, authorizeFaculty, asyn
             percentage: totalStudents > 0 ? (s._count.records / totalStudents) * 100 : 0
         }));
 
-        const avgAttendance = sessionStats.length > 0 
-            ? sessionStats.reduce((acc, curr) => acc + curr.percentage, 0) / sessionStats.length 
+        const avgAttendance = sessionStats.length > 0
+            ? sessionStats.reduce((acc, curr) => acc + curr.percentage, 0) / sessionStats.length
             : 0;
 
         res.json({
