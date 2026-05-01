@@ -70,7 +70,7 @@ The system features a **Context-Aware Attendance Engine** that intelligently pro
 | **Frontend** | React 19, Vite, Tailwind CSS 4, Lucide React, Axios |
 | **Backend** | Node.js (ESM), Express 5, Prisma ORM, JWT |
 | **Database** | PostgreSQL (Neon Database) |
-| **Hardware** | ESP32, RFID-RC522 |
+| **Hardware** | ESP32, RFID-MFRC522 |
 | **Deployment** | Netlify (Frontend), Vercel (Backend), Neon (Database) |
 
 ---
@@ -149,5 +149,3 @@ Upload `hardware/sketch.ino` to your ESP32 using Arduino IDE. Ensure the `api_ur
 ![Hardware](hardware/diagram.png)
 
 ---
-
-*Built with passion for modern education infrastructure.*
