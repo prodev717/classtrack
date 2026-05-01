@@ -1,4 +1,4 @@
-# ClassTrack 🎓
+# ClassTrack 
 ### Smart RFID-based Attendance Management System
 
 **ClassTrack** is a high-performance, end-to-end automated attendance tracking ecosystem. It integrates custom hardware (ESP32), a robust Node.js backend, and a modern React frontend to eliminate the friction of manual attendance marking.
